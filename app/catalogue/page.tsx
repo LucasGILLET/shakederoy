@@ -1,21 +1,85 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CocktailCard } from '../components/CocktailCard';
 import { Button } from '../components/Button';
 import { Search, Sparkles } from 'lucide-react';
-import { MOCK_COCKTAILS } from '../lib/data';
+import { Cocktail, Ingredient } from '../lib/data'; // Importing type
 import Link from 'next/link';
+import { apiFetch } from '../lib/api';
 
 export default function Catalogue() {
+    const [cocktails, setCocktails] = useState<Cocktail[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [filter, setFilter] = useState<'all' | 'alcohol' | 'no-alcohol'>('all');
+    const [search, setSearch] = useState('');
 
-    const filteredCocktails = MOCK_COCKTAILS.filter(c => {
+    useEffect(() => {
+        const fetchCocktails = async () => {
+            try {
+                const data = await apiFetch<any[]>('/cocktails');
+                
+                const parsedCocktails: Cocktail[] = data.map(c => {
+                    let ingredients: Ingredient[] = [];
+                    let instructions: string[] = [];
+
+                    try {
+                        ingredients = typeof c.ingredients === 'string' ? JSON.parse(c.ingredients) : c.ingredients;
+                    } catch (e) {
+                        console.error('Failed to parse ingredients for cocktail', c.id, e);
+                    }
+
+                    try {
+                        instructions = typeof c.instructions === 'string' ? JSON.parse(c.instructions) : (c.instructions ? [c.instructions] : []);
+                    } catch (e) {
+                        instructions = [c.instructions];
+                    }
+
+                    return {
+                        id: c.id,
+                        name: c.name,
+                        description: c.description,
+                        difficulty: 'Moyen', 
+                        duration: '5 min',
+                        alcohol: true, 
+                        color: '#EF4444',
+                        image: c.image || undefined,
+                        tags: [],
+                        ingredients: ingredients,
+                        steps: instructions
+                    };
+                });
+
+                setCocktails(parsedCocktails);
+            } catch (err) {
+                console.error('Failed to fetch cocktails:', err);
+                setError('Impossible de charger les cocktails. Veuillez réessayer plus tard.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchCocktails();
+    }, []);
+
+    const filteredCocktails = cocktails.filter(c => {
+        if (search && !c.name.toLowerCase().includes(search.toLowerCase())) {
+            return false;
+        }
         if (filter === 'alcohol') return c.alcohol;
         if (filter === 'no-alcohol') return !c.alcohol;
         return true;
     });
 
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#FFF9F0] flex items-center justify-center">
+                <div className="text-4xl font-display animate-bounce">Chargement... 🍹</div>
+            </div>
+        );
+    }
+    
     return (
         <div className="min-h-screen bg-[#FFF9F0]">
             {/* Header with Marquee */}
@@ -33,6 +97,12 @@ export default function Catalogue() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+                {error && (
+                    <div className="mb-8 p-4 bg-red-100 border-l-4 border-red-500 text-red-700">
+                        <p>{error}</p>
+                    </div>
+                )}
+
                 {/* Search & Filter Bar */}
                 <div className="flex flex-col lg:flex-row gap-8 mb-20 items-end">
                     <div className="flex-1 w-full">
@@ -43,6 +113,8 @@ export default function Catalogue() {
                                 type="text"
                                 placeholder="Mojito, Spritz..."
                                 className="w-full pl-20 pr-8 py-6 text-2xl font-bold border-4 border-brand-dark shadow-hard bg-white focus:outline-none focus:translate-x-[4px] focus:translate-y-[4px] focus:shadow-none transition-all placeholder:text-gray-300"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
                     </div>
@@ -78,7 +150,7 @@ export default function Catalogue() {
                 </div>
 
                 {/* Empty State */}
-                {filteredCocktails.length === 0 && (
+                {!loading && filteredCocktails.length === 0 && !error && (
                     <div className="text-center py-32 border-8 border-dashed border-gray-300 rounded-3xl">
                         <div className="text-9xl mb-8 animate-bounce">🤔</div>
                         <h3 className="text-4xl font-display mb-4">Rien trouvé...</h3>

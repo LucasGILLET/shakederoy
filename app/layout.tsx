@@ -3,6 +3,7 @@ import { Fredoka, Lilita_One } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
+import { AuthProvider } from "./context/AuthContext";
 
 const fredoka = Fredoka({
   subsets: ["latin"],
@@ -31,11 +32,13 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${fredoka.variable} ${lilitaOne.variable}`}>
       <body className="antialiased min-h-screen flex flex-col bg-surface-bg text-brand-dark font-sans selection:bg-brand-primary selection:text-white">
-        <Navbar />
-        <main className="flex-grow">
-          {children}
-        </main>
-        <Footer />
+        <AuthProvider>
+          <Navbar />
+          <main className="flex-grow">
+            {children}
+          </main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

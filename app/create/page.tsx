@@ -5,6 +5,9 @@ import { Input } from '@/app/components/Input';
 import { useState } from 'react';
 import { Plus, Trash2, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { apiFetch } from '@/app/lib/api';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/context/AuthContext';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -18,15 +21,19 @@ interface CocktailStep {
 }
 
 export default function CreateCocktail() {
+    const router = useRouter();
+    const { user } = useAuth();
     const [currentStep, setCurrentStep] = useState<Step>(1);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [difficulty, setDifficulty] = useState<'Facile' | 'Moyen' | 'Difficile'>('Facile');
     const [duration, setDuration] = useState('');
     const [alcohol, setAlcohol] = useState(true);
-    const [tags, setTags] = useState<string[]>([]);
+    const [tags, setTags] = useState<string[]>([]); // Keep for future use or remove if unused
     const [ingredients, setIngredients] = useState<Ingredient[]>([{ name: '', amount: '' }]);
     const [steps, setSteps] = useState<CocktailStep[]>([{ description: '' }]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState('');
 
     const addIngredient = () => {
         setIngredients([...ingredients, { name: '', amount: '' }]);
@@ -52,6 +59,40 @@ export default function CreateCocktail() {
         if (currentStep > 1) setCurrentStep((currentStep - 1) as Step);
     };
 
+    const handleSubmit = async () => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        setError('');
+
+        try {
+            if (!name || !description) {
+                throw new Error("Le nom et la description sont requis.");
+            }
+
+            const payload = {
+                name,
+                description,
+                ingredients: JSON.stringify(ingredients.filter(i => i.name && i.amount)),
+                instructions: JSON.stringify(steps.map(s => s.description).filter(s => s)),
+            };
+
+            await apiFetch('/cocktails/create', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: {
+                     'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                }
+            });
+
+            router.push('/catalogue');
+            router.refresh();
+        } catch (err: any) {
+            console.error('Failed to create cocktail:', err);
+            setError(err.message || "Une erreur est survenue lors de la création.");
+            setIsSubmitting(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 py-12">
             <div className="max-w-4xl mx-auto px-4">
@@ -63,6 +104,12 @@ export default function CreateCocktail() {
                     </h1>
                     <p className="text-xl text-gray-600">Partage ta recette avec la communauté !</p>
                 </div>
+
+                {error && (
+                    <div className="mb-8 p-4 bg-red-100 border-l-4 border-red-500 text-red-700">
+                        {error}
+                    </div>
+                )}
 
                 {/* Progress Bar */}
                 <div className="mb-12">
@@ -358,8 +405,18 @@ export default function CreateCocktail() {
                             Suivant <ArrowRight className="w-5 h-5" />
                         </Button>
                     ) : (
-                        <Button className="!bg-gradient-to-r !from-green-400 !to-emerald-500">
-                            <Check className="w-5 h-5" /> Publier !
+                        <Button 
+                            className="!bg-gradient-to-r !from-green-400 !to-emerald-500"
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <span>Publication...</span>
+                            ) : (
+                                <>
+                                    <Check className="w-5 h-5" /> Publier !
+                                </>
+                            )}
                         </Button>
                     )}
                 </div>

@@ -1,20 +1,101 @@
 'use client';
 
-import { MOCK_COCKTAILS } from '@/app/lib/data';
+import { apiFetch } from '@/app/lib/api';
 import { Button } from '@/app/components/Button';
 import { Clock, Gauge, ArrowLeft, Heart, Share2, ChefHat, ShoppingBag, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { useEffect, useState, use } from 'react';
 
+interface Ingredient {
+    name: string;
+    amount: string;
+}
+
+interface Cocktail {
+    id: string;
+    name: string;
+    description: string;
+    difficulty: string;
+    duration: string;
+    alcohol: boolean;
+    color: string;
+    tags: string[];
+    ingredients: Ingredient[];
+    steps: string[];
+    image?: string;
+}
+
 export default function CocktailDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const cocktail = MOCK_COCKTAILS.find(c => c.id === id);
+    const [cocktail, setCocktail] = useState<Cocktail | null>(null);
+    const [similarCocktails, setSimilarCocktails] = useState<Cocktail[]>([]);
     const [mounted, setMounted] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         setMounted(true);
-    }, []);
+        
+        const fetchCocktailData = async () => {
+             try {
+                 const data = await apiFetch<any>(`/cocktails/${id}`);
+                 
+                 const allCocktails = await apiFetch<any[]>('/cocktails');
+                 const others = allCocktails.filter((c: any) => c.id !== id).slice(0, 3);
+                 
+                 const parsedSimilar = others.map(c => ({
+                     ...c,
+                     color: c.color || '#EF4444',
+                     difficulty: c.difficulty || 'Moyen',
+                     duration: c.duration || '5 min',
+                     tags: c.tags || [],
+                     description: c.description || ''
+                 }));
+                 setSimilarCocktails(parsedSimilar);
+
+                 let ingredients: Ingredient[] = [];
+                 let steps: string[] = [];
+                 
+                 try {
+                     ingredients = typeof data.ingredients === 'string' ? JSON.parse(data.ingredients) : data.ingredients;
+                 } catch (e) { console.error('Error parsing ingredients', e); }
+
+                 try {
+                     steps = typeof data.instructions === 'string' ? JSON.parse(data.instructions) : (data.instructions ? [data.instructions] : []);
+                 } catch (e) { 
+                     steps = [data.instructions];
+                 }
+
+                 setCocktail({
+                     id: data.id,
+                     name: data.name,
+                     description: data.description,
+                     difficulty: data.difficulty || 'Moyen',
+                     duration: data.duration || '5 min',
+                     alcohol: data.alcohol !== undefined ? data.alcohol : true,
+                     color: data.color || '#EF4444',
+                     tags: data.tags || [],
+                     ingredients,
+                     steps,
+                     image: data.image
+                 });
+             } catch (err) {
+                 console.error('Failed to fetch cocktail', err);
+             } finally {
+                 setLoading(false);
+             }
+        };
+
+        fetchCocktailData();
+    }, [id]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#FFF9F0] flex items-center justify-center">
+                <div className="text-4xl font-display animate-bounce">Chargement... 🍹</div>
+            </div>
+        );
+    }
 
     if (!cocktail) {
         notFound();
@@ -208,13 +289,13 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
                         Tu pourrais aussi <span className="text-brand-primary">aimer</span>
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {MOCK_COCKTAILS.filter(c => c.id !== cocktail.id).slice(0, 3).map((similar, idx) => (
+                        {similarCocktails.map((similar, idx) => (
                             <Link key={similar.id} href={`/cocktail/${similar.id}`}>
                                 <div className={`card-skew bg-white p-6 hover:scale-105 transition-all cursor-pointer ${mounted ? 'animate-bounce-in' : 'opacity-0'}`} style={{ animationDelay: `${1 + idx * 0.1}s` }}>
                                     <div className="transform skewY(2deg)">
                                         <div
                                             className="w-full h-48 mb-4 flex items-center justify-center border-4 border-brand-dark"
-                                            style={{ backgroundColor: similar.color + '40' }}
+                                            style={{ backgroundColor: (similar.color || '#EF4444') + '40' }}
                                         >
                                             <span className="font-display text-6xl opacity-20">{similar.name.substring(0, 1)}</span>
                                         </div>

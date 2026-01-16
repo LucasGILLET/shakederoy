@@ -1,8 +1,15 @@
+'use client';
+
 import Link from 'next/link';
 import { Button } from './Button';
-import { Search, Sparkles, Flame } from 'lucide-react';
+import { Search, Sparkles, Flame, LogOut, User as UserIcon } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useState } from 'react';
 
 export function Navbar() {
+    const { user, logout } = useAuth();
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+
     return (
         <nav className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md border-b-4 border-brand-primary shadow-lg">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -37,9 +44,42 @@ export function Navbar() {
                         <button className="p-3 text-brand-dark hover:bg-pink-50 border-2 border-transparent hover:border-brand-primary transition-all transform skewX(-5deg) hover:skewX(-10deg) hover:scale-110">
                             <Search className="w-6 h-6 transform skewX(5deg)" />
                         </button>
-                        <Link href="/login" className="hidden sm:block">
-                            <Button variant="outline" size="sm">Connexion</Button>
-                        </Link>
+                        
+                        {user ? (
+                             <div className="relative">
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                                    className="gap-2"
+                                >
+                                    <UserIcon className="w-4 h-4" />
+                                    {user.username || user.email}
+                                </Button>
+                                {dropdownOpen && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-white border-2 border-brand-dark shadow-hard rounded-md z-50 overflow-hidden">
+                                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                                            <p className="text-sm font-bold text-gray-900 truncate">{user.email}</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                logout();
+                                                setDropdownOpen(false);
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            Déconnexion
+                                        </button>
+                                    </div>
+                                )}
+                             </div>
+                        ) : (
+                            <Link href="/login" className="hidden sm:block">
+                                <Button variant="outline" size="sm">Connexion</Button>
+                            </Link>
+                        )}
+
                         <Link href="/create" className="hidden sm:block">
                             <Button variant="primary" size="sm">
                                 Créer
