@@ -22,6 +22,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 ENV NODE_ENV=production
+ARG BACKEND_URL
 ENV BACKEND_URL=$BACKEND_URL
 
 COPY --from=build /app/.next ./.next
