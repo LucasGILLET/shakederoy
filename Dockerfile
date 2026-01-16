@@ -23,7 +23,7 @@ RUN npm ci
 
 ENV NODE_ENV=production
 ARG BACKEND_URL
-ENV BACKEND_URL=$BACKEND_URL
+ENV NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL
 
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
