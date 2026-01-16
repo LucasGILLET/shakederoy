@@ -2,7 +2,7 @@
 
 import { Button } from '@/app/components/Button';
 import { Input } from '@/app/components/Input';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { apiFetch } from '@/app/lib/api';
@@ -22,14 +22,32 @@ interface CocktailStep {
 
 export default function CreateCocktail() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const [currentStep, setCurrentStep] = useState<Step>(1);
+
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login');
+        }
+    }, [user, loading, router]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#FFF9F0] flex items-center justify-center">
+                <div className="text-4xl font-display animate-bounce">Chargement... 🍹</div>
+            </div>
+        );
+    }
+
+    if (!user) {
+        return null;
+    }
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [difficulty, setDifficulty] = useState<'Facile' | 'Moyen' | 'Difficile'>('Facile');
     const [duration, setDuration] = useState('');
     const [alcohol, setAlcohol] = useState(true);
-    const [tags, setTags] = useState<string[]>([]); // Keep for future use or remove if unused
+    const [tags, setTags] = useState<string[]>([]);
     const [ingredients, setIngredients] = useState<Ingredient[]>([{ name: '', amount: '' }]);
     const [steps, setSteps] = useState<CocktailStep[]>([{ description: '' }]);
     const [isSubmitting, setIsSubmitting] = useState(false);

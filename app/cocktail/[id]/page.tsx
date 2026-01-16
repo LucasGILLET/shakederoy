@@ -152,7 +152,7 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
                         {/* Title */}
                         <div>
                             <div className="inline-block bg-brand-primary text-white px-4 py-2 font-bold text-sm mb-4 transform -rotate-2 border-2 border-brand-dark">
-                                COCKTAIL #{cocktail.id}
+                                COCKTAIL #{cocktail.name}
                             </div>
                             <h1 className="text-7xl md:text-8xl font-display leading-none mb-6 hover-bounce">
                                 {cocktail.name}
