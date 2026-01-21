@@ -1,8 +1,9 @@
-name: Build & Push Front to Docker Hub
+name: Build & Push Front Prod to Docker Hub
 
 on:
   push:
-    branches: [front]
+    branches:
+      - prod
 
 jobs:
   build:
@@ -16,7 +17,8 @@ jobs:
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
       - name: Build Docker image
-        run: docker build -t lucasgillet/shakederoy-front:latest --build-arg BACKEND_URL="${{ secrets.BACKEND_URL }}" . 
+        run: |
+          docker build -t lucasgillet/shakederoy-front:prod --build-arg BACKEND_URL="${{ secrets.BACKEND_URL }}" .
 
       - name: Push Docker image
-        run: docker push lucasgillet/shakederoy-front:latest
+        run: docker push lucasgillet/shakederoy-front:prod
