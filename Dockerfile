@@ -5,6 +5,9 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
+ARG BACKEND_URL
+ENV NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -18,12 +21,13 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
-
 ENV NODE_ENV=production
+
 ARG BACKEND_URL
 ENV NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
