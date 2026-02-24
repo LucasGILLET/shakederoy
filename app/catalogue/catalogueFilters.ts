@@ -293,7 +293,7 @@ export function mapRawCocktail(raw: RawCocktail): Cocktail {
         ? raw.color
         : DEFAULT_COLOR,
     image:
-      typeof raw.image === 'string' && raw.image.trim() ? raw.image : undefined,
+      typeof raw.image === 'string' && raw.image.trim() ? raw.image : "",
     tags: parseTags(raw.tags, ingredients),
     ingredients,
     steps: parseSteps(raw.instructions ?? raw.steps),
