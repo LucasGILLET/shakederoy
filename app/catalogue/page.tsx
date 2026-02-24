@@ -53,7 +53,7 @@ export default function Catalogue() {
     };
 
     const fetchAllFavoriteIds = async (token: string | null): Promise<Set<string>> => {
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       const allFavoriteIds = new Set<string>();
       let currentPage = 1;
 
