@@ -1,110 +1,103 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { apiFetch } from '@/app/lib/api';
 import { useRouter } from 'next/navigation';
-
-interface User {
-    id: string;
-    username: string;
-    email: string;
-}
+import type { UserProfile } from '@/app/lib/types';
 
 interface AuthContextType {
-    user: User | null;
-    loading: boolean;
-    login: (email: string, password: string) => Promise<void>;
-    register: (username: string, email: string, password: string) => Promise<void>;
-    logout: () => void;
+  user: UserProfile | null;
+  loading: boolean;
+  login: (credential: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
-    const router = useRouter();
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-    useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
+  const refreshUser = useCallback(async () => {
+    try {
+      const profile = await apiFetch<UserProfile>('/users/self');
+      setUser(profile);
+    } catch {
+      setUser(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const profile = await apiFetch<UserProfile>('/users/self');
+        if (isMounted) {
+          setUser(profile);
         }
-        setLoading(false);
-    }, []);
-
-    const login = async (email: string, password: string) => {
-        try {
-            const response = await apiFetch<any>('/auth/login', {
-                method: 'POST',
-                body: JSON.stringify({ credential: email, password }),
-            });
-            
-            console.log('Login response:', response);
-
-            if (response.sub) {
-                const userData: User = {
-                    id: response.sub.id,
-                    username: response.sub.username,
-                    email: email,   
-                };
-                setUser(userData);
-                localStorage.setItem('user', JSON.stringify(userData));
-                router.push('/catalogue');
-                router.refresh();
-            } else {
-                 console.warn("Unexpected login response:", response);
-            }
-        } catch (error) {
-            console.error('Login failed:', error);
-            throw error;
+      } catch {
+        if (isMounted) {
+          setUser(null);
         }
-    };
-
-    const register = async (username: string, email: string, password: string) => {
-        try {
-            const response = await apiFetch<any>('/auth/register', {
-                method: 'POST',
-                body: JSON.stringify({ username, email, password }),
-            });
-            
-            if (response.sub) {
-                const userData: User = {
-                    id: response.sub.id,
-                    username: response.sub.username,
-                    email: email,
-                };
-                setUser(userData);
-                localStorage.setItem('user', JSON.stringify(userData));
-                router.push('/catalogue');
-                router.refresh();
-            } else {
-                await login(email, password);
-            }
-        } catch (error) {
-            console.error('Registration failed:', error);
-            throw error;
+      } finally {
+        if (isMounted) {
+          setLoading(false);
         }
-    };
+      }
+    })();
 
-    const logout = () => {
-        setUser(null);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        router.push('/login');
+    return () => {
+      isMounted = false;
     };
+  }, []);
 
-    return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
+  const login = async (credential: string, password: string) => {
+    await apiFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ credential, password }),
+    });
+
+    await refreshUser();
+    router.push('/catalogue');
+    router.refresh();
+  };
+
+  const register = async (username: string, email: string, password: string) => {
+    await apiFetch('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, email, password }),
+    });
+
+    await refreshUser();
+    router.push('/catalogue');
+    router.refresh();
+  };
+
+  const logout = async () => {
+    try {
+      await apiFetch('/auth/logout');
+    } finally {
+      setUser(null);
+      router.push('/login');
+      router.refresh();
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-    const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
-    return context;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }

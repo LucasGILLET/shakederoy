@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { CocktailCard } from '../components/CocktailCard';
-import { MOCK_COCKTAILS } from '../lib/data';
+import { MOCK_COCKTAILS } from '../lib/mock-data';
 import { Flame, TrendingUp, Clock, Trophy, Sparkles } from 'lucide-react';
 
 type TrendFilter = 'hot' | 'new' | 'top';

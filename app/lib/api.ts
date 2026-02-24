@@ -6,14 +6,21 @@ interface FetchOptions extends RequestInit {
 }
 
 export async function apiFetch<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
-    const { headers, ...rest } = options;
+    const { headers, body, ...rest } = options;
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
+    const mergedHeaders: HeadersInit = isFormData
+        ? { ...headers }
+        : {
+              'Content-Type': 'application/json',
+              ...headers,
+          };
 
     const config: FetchOptions = {
         ...rest,
-        headers: {
-            'Content-Type': 'application/json',
-            ...headers,
-        },
+        credentials: 'include',
+        body,
+        headers: mergedHeaders,
     };
 
     try {
