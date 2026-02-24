@@ -64,7 +64,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t lucasgillet/shakederoy-front:prod --build-arg BACKEND_URL="${{ secrets.BACKEND_URL }}" .
+          docker build -t lucasgillet/shakederoy-front --build-arg BACKEND_URL="${{ secrets.BACKEND_URL }}" .
 
       - name: Push Docker image
-        run: docker push lucasgillet/shakederoy-front:prod
+        run: docker push lucasgillet/shakederoy-front
