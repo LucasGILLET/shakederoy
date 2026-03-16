@@ -1,4 +1,4 @@
-const API_BASE_URL = '/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/+$/, '') ?? '';
 
 interface FetchOptions extends RequestInit {
     headers?: HeadersInit;
@@ -26,6 +26,15 @@ function buildErrorMessage(response: Response, errorBody: ApiErrorBody) {
     return `Error ${response.status}: ${response.statusText}`;
 }
 
+function buildApiUrl(endpoint: string) {
+    if (!API_BASE_URL) {
+        throw new Error('NEXT_PUBLIC_BACKEND_URL is not configured.');
+    }
+
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    return `${API_BASE_URL}${normalizedEndpoint}`;
+}
+
 export async function apiFetch<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
     const { headers, ...rest } = options;
 
@@ -38,7 +47,7 @@ export async function apiFetch<T>(endpoint: string, options: FetchOptions = {}):
         },
     };
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const response = await fetch(buildApiUrl(endpoint), config);
 
     if (!response.ok) {
         const errorText = await response.text();

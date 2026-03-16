@@ -1,5 +1,7 @@
 import { apiFetch } from '../api'
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'https://shake-api-tmp.striffe.dev'
+
 describe('apiFetch', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -14,8 +16,8 @@ describe('apiFetch', () => {
     })
 
     const result = await apiFetch<typeof mockData>('/test')
-    
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/test', {
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(`${API_BASE_URL}/test`, {
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
@@ -27,7 +29,7 @@ describe('apiFetch', () => {
   it('makes a successful POST request with body', async () => {
     const mockResponse = { success: true }
     const requestBody = { username: 'test', password: 'password' }
-    
+
     globalThis.fetch = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -39,7 +41,7 @@ describe('apiFetch', () => {
       body: JSON.stringify(requestBody),
     })
 
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/auth/login', {
+    expect(globalThis.fetch).toHaveBeenCalledWith(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       body: JSON.stringify(requestBody),
       credentials: 'include',
@@ -57,7 +59,7 @@ describe('apiFetch', () => {
     })
 
     const result = await apiFetch('/delete')
-    
+
     expect(result).toEqual({})
   })
 
@@ -141,7 +143,7 @@ describe('apiFetch', () => {
       },
     })
 
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/test', {
+    expect(globalThis.fetch).toHaveBeenCalledWith(`${API_BASE_URL}/test`, {
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
