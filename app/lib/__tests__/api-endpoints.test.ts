@@ -33,6 +33,7 @@ describe('API Endpoints - Cocktails', () => {
       const result = await apiFetch<typeof mockCocktails>('/cocktails')
 
       expect(globalThis.fetch).toHaveBeenCalledWith('/api/cocktails', {
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -74,6 +75,7 @@ describe('API Endpoints - Cocktails', () => {
       const result = await apiFetch<typeof mockCocktail>('/cocktails/1')
 
       expect(globalThis.fetch).toHaveBeenCalledWith('/api/cocktails/1', {
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -124,6 +126,7 @@ describe('API Endpoints - Cocktails', () => {
       expect(globalThis.fetch).toHaveBeenCalledWith('/api/cocktails/create', {
         method: 'POST',
         body: JSON.stringify(newCocktail),
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer fake-token',
@@ -194,6 +197,7 @@ describe('API Endpoints - Authentication with Tokens', () => {
       })
 
       expect(globalThis.fetch).toHaveBeenCalledWith('/api/protected-endpoint', {
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -350,6 +354,7 @@ describe('API Advanced Cases', () => {
       expect(globalThis.fetch).toHaveBeenCalledWith('/api/cocktails/1', {
         method: 'PUT',
         body: JSON.stringify(updateData),
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -369,6 +374,7 @@ describe('API Advanced Cases', () => {
       expect(result).toEqual({})
       expect(globalThis.fetch).toHaveBeenCalledWith('/api/cocktails/1', {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -392,6 +398,7 @@ describe('API Advanced Cases', () => {
       expect(globalThis.fetch).toHaveBeenCalledWith('/api/cocktails/1', {
         method: 'PATCH',
         body: JSON.stringify(patchData),
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },

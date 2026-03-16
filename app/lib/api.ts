@@ -1,8 +1,29 @@
-// Use local proxy to avoid CORS
 const API_BASE_URL = '/api';
 
 interface FetchOptions extends RequestInit {
     headers?: HeadersInit;
+}
+
+type ApiErrorBody = {
+    message?: string;
+    error?: unknown;
+    issues?: unknown;
+};
+
+function buildErrorMessage(response: Response, errorBody: ApiErrorBody) {
+    if (typeof errorBody.message === 'string' && errorBody.message.trim()) {
+        return errorBody.message;
+    }
+
+    if (errorBody.error) {
+        return JSON.stringify(errorBody.error);
+    }
+
+    if (errorBody.issues) {
+        return JSON.stringify(errorBody.issues);
+    }
+
+    return `Error ${response.status}: ${response.statusText}`;
 }
 
 export async function apiFetch<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
@@ -10,42 +31,31 @@ export async function apiFetch<T>(endpoint: string, options: FetchOptions = {}):
 
     const config: FetchOptions = {
         ...rest,
+        credentials: 'include',
         headers: {
             'Content-Type': 'application/json',
             ...headers,
         },
     };
 
-    try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            let errorBody;
-            try {
-                errorBody = JSON.parse(errorText);
-            } catch {
-                errorBody = { message: errorText };
-            }
-            
-            console.error("API Error Body:", errorBody);
-            
-            const message = errorBody.message || 
-                          (errorBody.error ? JSON.stringify(errorBody.error) : '') ||
-                          (errorBody.issues ? JSON.stringify(errorBody.issues) : '') ||
-                          `Error ${response.status}: ${response.statusText}`;
-                          
-            throw new Error(message);
+    if (!response.ok) {
+        const errorText = await response.text();
+        let errorBody: ApiErrorBody;
+
+        try {
+            errorBody = JSON.parse(errorText) as ApiErrorBody;
+        } catch {
+            errorBody = { message: errorText };
         }
 
-        // Handle 204 No Content
-        if (response.status === 204) {
-            return {} as T;
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('API Request Failed:', error);
-        throw error;
+        throw new Error(buildErrorMessage(response, errorBody));
     }
+
+    if (response.status === 204) {
+        return {} as T;
+    }
+
+    return await response.json();
 }

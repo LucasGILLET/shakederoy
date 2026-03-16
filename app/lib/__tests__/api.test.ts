@@ -16,6 +16,7 @@ describe('apiFetch', () => {
     const result = await apiFetch<typeof mockData>('/test')
     
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/test', {
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -41,6 +42,7 @@ describe('apiFetch', () => {
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(requestBody),
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -140,6 +142,7 @@ describe('apiFetch', () => {
     })
 
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/test', {
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer token123',
@@ -148,9 +151,7 @@ describe('apiFetch', () => {
     })
   })
 
-  it('logs errors to console', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
-    
+  it('throws a normalized error without logging', async () => {
     globalThis.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 400,
@@ -158,9 +159,6 @@ describe('apiFetch', () => {
       text: async () => JSON.stringify({ message: 'Error' }),
     })
 
-    await expect(apiFetch('/test')).rejects.toThrow()
-    
-    expect(consoleErrorSpy).toHaveBeenCalled()
-    consoleErrorSpy.mockRestore()
+    await expect(apiFetch('/test')).rejects.toThrow('Error')
   })
 })

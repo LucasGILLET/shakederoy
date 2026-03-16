@@ -30,7 +30,8 @@ describe('AuthContext', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    localStorage.clear()
+    mockApiFetch.mockReset()
+    mockApiFetch.mockRejectedValue(new Error('Unauthorized'))
     mockUseRouter.mockReturnValue({
       push: mockPush,
       refresh: mockRefresh,
@@ -51,13 +52,14 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('user')).toHaveTextContent('No User')
     })
 
-    it('loads user from localStorage on mount', async () => {
+    it('loads user from /users/self on mount', async () => {
       const storedUser = {
         id: '1',
         username: 'testuser',
         email: 'test@example.com',
+        role: 'user',
       }
-      localStorage.setItem('user', JSON.stringify(storedUser))
+      mockApiFetch.mockResolvedValueOnce(storedUser)
 
       render(
         <AuthProvider>
@@ -74,12 +76,15 @@ describe('AuthContext', () => {
   describe('Login', () => {
     it('successfully logs in user', async () => {
       const mockResponse = {
-        sub: {
-          id: '1',
-          username: 'testuser',
-        },
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com',
+        role: 'user',
       }
-      mockApiFetch.mockResolvedValue(mockResponse)
+      mockApiFetch
+        .mockRejectedValueOnce(new Error('Unauthorized'))
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce(mockResponse)
 
       render(
         <AuthProvider>
@@ -116,12 +121,15 @@ describe('AuthContext', () => {
   describe('Register', () => {
     it('successfully registers user', async () => {
       const mockResponse = {
-        sub: {
-          id: '2',
-          username: 'newuser',
-        },
+        id: '2',
+        username: 'newuser',
+        email: 'test@example.com',
+        role: 'user',
       }
-      mockApiFetch.mockResolvedValue(mockResponse)
+      mockApiFetch
+        .mockRejectedValueOnce(new Error('Unauthorized'))
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce(mockResponse)
 
       render(
         <AuthProvider>
@@ -154,14 +162,15 @@ describe('AuthContext', () => {
       expect(mockPush).toHaveBeenCalledWith('/catalogue')
     })
 
-    it('falls back to login when registration response has no sub', async () => {
+    it('fetches the current user after registration', async () => {
       mockApiFetch
+        .mockRejectedValueOnce(new Error('Unauthorized'))
         .mockResolvedValueOnce({})
         .mockResolvedValueOnce({
-          sub: {
-            id: '3',
-            username: 'testuser',
-          },
+          id: '3',
+          username: 'testuser',
+          email: 'test@example.com',
+          role: 'user',
         })
 
       render(
@@ -178,11 +187,11 @@ describe('AuthContext', () => {
       registerButton.click()
 
       await waitFor(() => {
-        expect(mockApiFetch).toHaveBeenCalledTimes(2)
+        expect(mockApiFetch).toHaveBeenCalledTimes(3)
       })
 
-      expect(mockApiFetch).toHaveBeenNthCalledWith(1, '/auth/register', expect.any(Object))
-      expect(mockApiFetch).toHaveBeenNthCalledWith(2, '/auth/login', expect.any(Object))
+      expect(mockApiFetch).toHaveBeenNthCalledWith(2, '/auth/register', expect.any(Object))
+      expect(mockApiFetch).toHaveBeenNthCalledWith(3, '/users/self')
     })
   })
 
@@ -192,8 +201,11 @@ describe('AuthContext', () => {
         id: '1',
         username: 'testuser',
         email: 'test@example.com',
+        role: 'user',
       }
-      localStorage.setItem('user', JSON.stringify(storedUser))
+      mockApiFetch
+        .mockResolvedValueOnce(storedUser)
+        .mockResolvedValueOnce({})
 
       render(
         <AuthProvider>
@@ -216,6 +228,7 @@ describe('AuthContext', () => {
       })
 
       expect(mockPush).toHaveBeenCalledWith('/login')
+      expect(mockApiFetch).toHaveBeenCalledWith('/auth/logout')
     })
   })
 
