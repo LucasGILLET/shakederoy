@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Check, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/app/components/Button';
@@ -18,6 +18,11 @@ interface Ingredient {
 
 interface CocktailStep {
     description: string;
+}
+
+interface CocktailStyle {
+    id: string;
+    name: string;
 }
 
 const DIFFICULTY_TO_LEVEL: Record<'Facile' | 'Moyen' | 'Difficile', number> = {
@@ -45,8 +50,12 @@ export default function CreateCocktail() {
     const [difficulty, setDifficulty] = useState<'Facile' | 'Moyen' | 'Difficile'>('Facile');
     const [duration, setDuration] = useState('');
     const [alcohol, setAlcohol] = useState(true);
+    const [primaryAlcohol, setPrimaryAlcohol] = useState('');
+    const [styleId, setStyleId] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
     const [ingredients, setIngredients] = useState<Ingredient[]>([{ name: '', amount: '' }]);
     const [steps, setSteps] = useState<CocktailStep[]>([{ description: '' }]);
+    const [styles, setStyles] = useState<CocktailStyle[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -55,6 +64,32 @@ export default function CreateCocktail() {
             router.push('/login');
         }
     }, [loading, router, user]);
+
+    useEffect(() => {
+        const loadStyles = async () => {
+            try {
+                const data = await apiFetch<CocktailStyle[]>('/cocktails/styles');
+                setStyles(data);
+            } catch {
+                setStyles([]);
+            }
+        };
+
+        void loadStyles();
+    }, []);
+
+    const previewIngredients = useMemo(() => {
+        const normalizedPrimaryAlcohol = primaryAlcohol.trim();
+        const hasPrimaryAlcohol = ingredients.some(
+            (ingredient) => ingredient.name.trim().toLowerCase() === normalizedPrimaryAlcohol.toLowerCase()
+        );
+
+        if (alcohol && normalizedPrimaryAlcohol && !hasPrimaryAlcohol) {
+            return [{ name: normalizedPrimaryAlcohol, amount: '' }, ...ingredients];
+        }
+
+        return ingredients;
+    }, [alcohol, ingredients, primaryAlcohol]);
 
     const addIngredient = () => {
         setIngredients([...ingredients, { name: '', amount: '' }]);
@@ -95,9 +130,15 @@ export default function CreateCocktail() {
         try {
             const trimmedName = name.trim();
             const trimmedDescription = description.trim();
+            const trimmedImageUrl = imageUrl.trim();
+            const trimmedPrimaryAlcohol = primaryAlcohol.trim();
 
             if (!trimmedName || !trimmedDescription) {
                 throw new Error('Le nom et la description sont requis.');
+            }
+
+            if (alcohol && !trimmedPrimaryAlcohol) {
+                throw new Error("Renseigne l'alcool principal.");
             }
 
             const validIngredients = ingredients
@@ -106,6 +147,16 @@ export default function CreateCocktail() {
                     amount: ingredient.amount.trim(),
                 }))
                 .filter((ingredient) => ingredient.name);
+
+            if (
+                alcohol &&
+                trimmedPrimaryAlcohol &&
+                !validIngredients.some(
+                    (ingredient) => ingredient.name.toLowerCase() === trimmedPrimaryAlcohol.toLowerCase()
+                )
+            ) {
+                validIngredients.unshift({ name: trimmedPrimaryAlcohol, amount: '' });
+            }
 
             const validSteps = steps
                 .map((step) => step.description.trim())
@@ -156,7 +207,25 @@ export default function CreateCocktail() {
                 )
             );
 
-            router.push(`/cocktail/${createdCocktail.id}`);
+            if (trimmedImageUrl) {
+                await apiFetch(`/cocktails/${createdCocktail.id}/photos`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        url: trimmedImageUrl,
+                        altText: trimmedName,
+                        isPrimary: true,
+                    }),
+                });
+            }
+
+            if (styleId) {
+                await apiFetch(`/cocktails/${createdCocktail.id}/style-links`, {
+                    method: 'POST',
+                    body: JSON.stringify({ styleId }),
+                });
+            }
+
+            router.push(`/my-cocktails`);
             router.refresh();
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Une erreur est survenue lors de la creation.');
@@ -184,7 +253,7 @@ export default function CreateCocktail() {
                     <h1 className="text-6xl font-display mb-4 hover-bounce">
                         Cree ton <span className="text-brand-primary">cocktail</span>
                     </h1>
-                    <p className="text-xl text-gray-600">Partage ta recette avec la communaute.</p>
+                    <p className="text-xl text-gray-600">Formulaire complet Sprint 2.</p>
                 </div>
 
                 {error && (
@@ -278,34 +347,72 @@ export default function CreateCocktail() {
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-brand-dark">
-                                        Type
-                                    </label>
-                                    <div className="flex gap-4">
-                                        <button
-                                            type="button"
-                                            onClick={() => setAlcohol(true)}
-                                            className={`flex-1 py-4 px-6 font-bold border-4 transition-all transform skewX(-5deg) ${
-                                                alcohol
-                                                    ? 'bg-brand-secondary text-white border-brand-dark'
-                                                    : 'bg-white text-gray-600 border-gray-300 hover:border-brand-secondary'
-                                            }`}
-                                        >
-                                            <span className="transform skewX(5deg) inline-block">Avec alcool</span>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setAlcohol(false)}
-                                            className={`flex-1 py-4 px-6 font-bold border-4 transition-all transform skewX(-5deg) ${
-                                                !alcohol
-                                                    ? 'bg-green-400 text-brand-dark border-brand-dark'
-                                                    : 'bg-white text-gray-600 border-gray-300 hover:border-green-400'
-                                            }`}
-                                        >
-                                            <span className="transform skewX(5deg) inline-block">Sans alcool</span>
-                                        </button>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-brand-dark">
+                                            Type
+                                        </label>
+                                        <div className="flex gap-4">
+                                            <button
+                                                type="button"
+                                                onClick={() => setAlcohol(true)}
+                                                className={`flex-1 py-4 px-6 font-bold border-4 transition-all transform skewX(-5deg) ${
+                                                    alcohol
+                                                        ? 'bg-brand-secondary text-white border-brand-dark'
+                                                        : 'bg-white text-gray-600 border-gray-300 hover:border-brand-secondary'
+                                                }`}
+                                            >
+                                                <span className="transform skewX(5deg) inline-block">Avec alcool</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAlcohol(false)}
+                                                className={`flex-1 py-4 px-6 font-bold border-4 transition-all transform skewX(-5deg) ${
+                                                    !alcohol
+                                                        ? 'bg-green-400 text-brand-dark border-brand-dark'
+                                                        : 'bg-white text-gray-600 border-gray-300 hover:border-green-400'
+                                                }`}
+                                            >
+                                                <span className="transform skewX(5deg) inline-block">Sans alcool</span>
+                                            </button>
+                                        </div>
                                     </div>
+
+                                    {alcohol && (
+                                        <Input
+                                            label="Alcool principal"
+                                            placeholder="Ex: Rhum blanc"
+                                            value={primaryAlcohol}
+                                            onChange={(event) => setPrimaryAlcohol(event.target.value)}
+                                        />
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-brand-dark">
+                                            Style
+                                        </label>
+                                        <select
+                                            value={styleId}
+                                            onChange={(event) => setStyleId(event.target.value)}
+                                            className="w-full px-5 py-4 border-4 border-gray-300 focus:border-brand-primary focus:outline-none transition-all bg-white text-lg font-medium shadow-md"
+                                        >
+                                            <option value="">Aucun style</option>
+                                            {styles.map((style) => (
+                                                <option key={style.id} value={style.id}>
+                                                    {style.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <Input
+                                        label="Image URL optionnelle"
+                                        placeholder="https://..."
+                                        value={imageUrl}
+                                        onChange={(event) => setImageUrl(event.target.value)}
+                                    />
                                 </div>
                             </div>
                         )}
@@ -319,7 +426,7 @@ export default function CreateCocktail() {
                                         <div className="flex-1">
                                             <Input
                                                 label={`Ingredient ${index + 1}`}
-                                                placeholder="Ex: Rhum blanc"
+                                                placeholder="Ex: Citron vert"
                                                 value={ingredient.name}
                                                 onChange={(event) => {
                                                     const nextIngredients = [...ingredients];
@@ -406,7 +513,7 @@ export default function CreateCocktail() {
 
                                 <div className="bg-gradient-to-br from-pink-50 to-purple-50 p-8 border-4 border-brand-primary">
                                     <div className="text-center mb-6">
-                                        <div className="text-7xl mb-4">C</div>
+                                        <div className="text-7xl mb-4">{name ? name[0].toUpperCase() : 'C'}</div>
                                         <h3 className="text-4xl font-display mb-2">{name || 'Nom du cocktail'}</h3>
                                         <p className="text-lg text-gray-600 italic">{description || 'Description...'}</p>
                                     </div>
@@ -422,10 +529,23 @@ export default function CreateCocktail() {
                                         </div>
                                     </div>
 
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                        <div className="bg-white p-4 border-2 border-brand-dark">
+                                            <div className="font-bold text-sm text-gray-500 mb-1">STYLE</div>
+                                            <div className="text-lg font-display">
+                                                {styles.find((style) => style.id === styleId)?.name || 'Aucun style'}
+                                            </div>
+                                        </div>
+                                        <div className="bg-white p-4 border-2 border-brand-dark">
+                                            <div className="font-bold text-sm text-gray-500 mb-1">ALCOOL PRINCIPAL</div>
+                                            <div className="text-lg font-display">{primaryAlcohol || 'Sans alcool'}</div>
+                                        </div>
+                                    </div>
+
                                     <div className="bg-white p-6 mb-4 border-2 border-brand-dark">
                                         <h4 className="font-display text-xl mb-4">Ingredients</h4>
                                         <ul className="space-y-2">
-                                            {ingredients.map((ingredient, index) => (
+                                            {previewIngredients.map((ingredient, index) => (
                                                 <li key={index} className="flex justify-between">
                                                     <span className="font-bold">{ingredient.name || '...'}</span>
                                                     <span className="text-gray-600">{ingredient.amount || '...'}</span>
@@ -449,7 +569,7 @@ export default function CreateCocktail() {
 
                                 <div className="bg-yellow-50 border-4 border-yellow-300 p-6 text-center">
                                     <Sparkles className="w-12 h-12 text-yellow-600 mx-auto mb-3" />
-                                    <p className="font-bold text-lg">Ton cocktail est pret a etre partage.</p>
+                                    <p className="font-bold text-lg">Ton cocktail sera cree en pending puis visible apres validation admin.</p>
                                 </div>
                             </div>
                         )}
