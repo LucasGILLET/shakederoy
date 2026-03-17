@@ -10,9 +10,11 @@ interface CocktailCardProps {
     difficulty: 'Facile' | 'Moyen' | 'Difficile';
     duration: string;
     alcohol: boolean;
+    metaLabel?: string;
+    metaValue?: string;
 }
 
-export function CocktailCard({ id, name, image, tags, difficulty, duration, alcohol }: CocktailCardProps) {
+export function CocktailCard({ id, name, image, tags, difficulty, duration, alcohol, metaLabel, metaValue }: CocktailCardProps) {
     return (
         <Link href={`/cocktail/${id}`} className="block group">
             <div className="card-skew h-full flex flex-col">
@@ -69,6 +71,13 @@ export function CocktailCard({ id, name, image, tags, difficulty, duration, alco
                                 {difficulty}
                             </div>
                         </div>
+
+                        {metaLabel && metaValue && (
+                            <div className="mt-3 inline-flex items-center gap-2 self-start border-2 border-brand-dark bg-orange-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-dark">
+                                <span>{metaLabel}</span>
+                                <span>{metaValue}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

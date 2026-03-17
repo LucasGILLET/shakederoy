@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
-import { ArrowBigDown, ArrowBigUp, ArrowLeft, ChefHat, Clock, Gauge, Heart, Share2, ShoppingBag, Sparkles } from 'lucide-react';
+import { ArrowBigDown, ArrowBigUp, ArrowLeft, Check, ChefHat, Clock, Copy, ExternalLink, Gauge, Heart, Share2, ShoppingBag, Sparkles } from 'lucide-react';
 import { Button } from '@/app/components/Button';
 import { apiFetch, apiFetchList } from '@/app/lib/api';
 import { fetchFavoritesPage, toggleFavorite } from '@/app/lib/favoritesApi';
@@ -52,12 +52,15 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
     const [notFound, setNotFound] = useState(false);
     const [error, setError] = useState('');
     const [shareMessage, setShareMessage] = useState('');
+    const [shareUrl, setShareUrl] = useState('');
     const [favoriteError, setFavoriteError] = useState('');
     const [voteError, setVoteError] = useState('');
     const [voteLoading, setVoteLoading] = useState(false);
+    const [shareLoading, setShareLoading] = useState(false);
 
     useEffect(() => {
         setMounted(true);
+        setShareUrl(window.location.href);
 
         const fetchCocktailData = async () => {
             setLoading(true);
@@ -159,11 +162,44 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
     };
 
     const handleShare = async () => {
+        if (!cocktail) {
+            return;
+        }
+
+        const urlToShare = shareUrl || window.location.href;
+        setShareLoading(true);
+
         try {
-            await navigator.clipboard.writeText(window.location.href);
-            setShareMessage('Lien copie.');
+            if (typeof navigator.share === 'function') {
+                await navigator.share({
+                    title: cocktail.name,
+                    text: cocktail.description || `Decouvre le cocktail ${cocktail.name} sur ShakeDeRoy.`,
+                    url: urlToShare,
+                });
+                setShareMessage('Partage ouvert sur ton appareil.');
+                return;
+            }
+
+            await navigator.clipboard.writeText(urlToShare);
+            setShareMessage('Lien copie dans le presse-papiers.');
         } catch {
-            setShareMessage('Copie du lien indisponible sur ce navigateur.');
+            setShareMessage('Partage indisponible sur ce navigateur.');
+        } finally {
+            setShareLoading(false);
+        }
+    };
+
+    const handleCopyLink = async () => {
+        const urlToShare = shareUrl || window.location.href;
+        setShareLoading(true);
+
+        try {
+            await navigator.clipboard.writeText(urlToShare);
+            setShareMessage('Lien copie dans le presse-papiers.');
+        } catch {
+            setShareMessage('Impossible de copier le lien.');
+        } finally {
+            setShareLoading(false);
         }
     };
 
@@ -399,14 +435,63 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
                             </div>
                         </div>
 
+                        <div className="card-skew bg-gradient-to-br from-white to-pink-50 p-6">
+                            <div className="transform skewY(2deg)">
+                                <div className="flex flex-col gap-4">
+                                    <div>
+                                        <p className="text-sm font-black uppercase tracking-wide text-gray-500">Partage</p>
+                                        <h3 className="text-2xl font-display">Lien public du cocktail</h3>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 border-4 border-brand-dark bg-white px-4 py-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-black uppercase tracking-wide text-gray-500">
+                                                {cocktail.name}
+                                            </p>
+                                            <p className="truncate font-mono text-xs text-gray-700">
+                                                {shareUrl || `/cocktail/${cocktail.id}`}
+                                            </p>
+                                        </div>
+                                        {shareMessage ? (
+                                            <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                                        ) : (
+                                            <ExternalLink className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                                        )}
+                                    </div>
+
+                                    <div className="flex flex-col gap-3 sm:flex-row">
+                                        <Button
+                                            variant="outline"
+                                            size="lg"
+                                            className="flex-1"
+                                            onClick={() => void handleShare()}
+                                            disabled={shareLoading}
+                                        >
+                                            <Share2 className="w-5 h-5" />
+                                            Partager
+                                        </Button>
+                                        <Button
+                                            size="lg"
+                                            className="flex-1"
+                                            onClick={() => void handleCopyLink()}
+                                            disabled={shareLoading}
+                                        >
+                                            <Copy className="w-5 h-5" />
+                                            Copier le lien
+                                        </Button>
+                                    </div>
+
+                                    <p className="text-sm text-gray-600">
+                                        Envoie ce lien pour ouvrir directement la fiche publique du cocktail.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex gap-4">
                             <Button size="lg" className="flex-1" onClick={() => void handleFavoriteToggle()}>
                                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
                                 {isFavorite ? ' Retirer des favoris' : ' Ajouter aux favoris'}
-                            </Button>
-                            <Button variant="outline" size="lg" onClick={() => void handleShare()}>
-                                <Share2 className="w-5 h-5" />
-                                Copier le lien
                             </Button>
                         </div>
                     </div>

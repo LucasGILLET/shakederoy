@@ -9,6 +9,7 @@ import { apiFetch, apiFetchList } from '../lib/api';
 import { mapRawCocktail, type RawCocktail } from '../catalogue/catalogueFilters';
 
 type MappedCocktail = ReturnType<typeof mapRawCocktail>;
+type TrendCocktail = MappedCocktail & { voteCountValue: string };
 
 type TrendSection = {
     id: string;
@@ -16,7 +17,7 @@ type TrendSection = {
     description: string;
     icon: ComponentType<{ className?: string }>;
     iconClassName: string;
-    cocktails: MappedCocktail[];
+    cocktails: TrendCocktail[];
 };
 
 interface CocktailOfMonthRow {
@@ -25,6 +26,14 @@ interface CocktailOfMonthRow {
     rank: number;
     year: number;
     month: number;
+}
+
+interface VoteSummary {
+    cocktail_id: string;
+    upvotes: number;
+    downvotes: number;
+    score: number;
+    total: number;
 }
 
 function isApprovedCocktail(cocktail: RawCocktail) {
@@ -80,6 +89,19 @@ export default function Trends() {
                     Promise.all(
                         sectionRequests.map(async (section) => {
                             const cocktails = await apiFetchList<RawCocktail>(section.endpoint);
+                            const mappedCocktails = cocktails
+                                .filter(isApprovedCocktail)
+                                .map(mapRawCocktail)
+                                .slice(0, 6);
+
+                            const voteSummaries = await Promise.all(
+                                mappedCocktails.map(async (cocktail) => {
+                                    const summary = await apiFetch<VoteSummary>(`/cocktails/${cocktail.id}/votes/summary`).catch(() => null);
+                                    return [cocktail.id, summary] as const;
+                                })
+                            );
+
+                            const voteSummaryMap = new Map(voteSummaries);
 
                             return {
                                 id: section.id,
@@ -87,10 +109,10 @@ export default function Trends() {
                                 description: section.description,
                                 icon: section.icon,
                                 iconClassName: section.iconClassName,
-                                cocktails: cocktails
-                                    .filter(isApprovedCocktail)
-                                    .map(mapRawCocktail)
-                                    .slice(0, 6),
+                                cocktails: mappedCocktails.map((cocktail) => ({
+                                    ...cocktail,
+                                    voteCountValue: String(voteSummaryMap.get(cocktail.id)?.total ?? 0),
+                                })),
                             };
                         })
                     ),
@@ -201,7 +223,11 @@ export default function Trends() {
                                                     className="relative animate-slide-left"
                                                     style={{ animationDelay: `${index * 0.05}s` }}
                                                 >
-                                                    <CocktailCard {...cocktail} />
+                                                    <CocktailCard
+                                                        {...cocktail}
+                                                        metaLabel="votes"
+                                                        metaValue={cocktail.voteCountValue}
+                                                    />
                                                     {section.id === 'top-voted' && index < 3 && (
                                                         <div className="absolute -top-3 -left-3 w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 border-4 border-brand-dark text-white font-black text-xl flex items-center justify-center transform rotate-12 shadow-lg z-10">
                                                             #{index + 1}
