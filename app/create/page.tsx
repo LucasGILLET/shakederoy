@@ -25,11 +25,17 @@ interface CocktailStyle {
     name: string;
 }
 
-const DIFFICULTY_TO_LEVEL: Record<'Facile' | 'Moyen' | 'Difficile', number> = {
-    Facile: 1,
-    Moyen: 3,
-    Difficile: 5,
+const DIFFICULTY_TO_LEVEL: Record<'Facile' | 'Moyen' | 'Difficile', 'easy' | 'medium' | 'hard'> = {
+    Facile: 'easy',
+    Moyen: 'medium',
+    Difficile: 'hard',
 };
+
+interface CreateCocktailResponse {
+    cocktail: {
+        id: string;
+    };
+}
 
 function slugify(value: string): string {
     return value
@@ -171,57 +177,32 @@ export default function CreateCocktail() {
             }
 
             const prepTimeValue = Number.parseInt(duration.replace(/[^\d]/g, ''), 10);
-            const createdCocktail = await apiFetch<{ id: string }>('/cocktails/create', {
+            const createdCocktail = await apiFetch<CreateCocktailResponse>('/cocktails/create', {
                 method: 'POST',
                 body: JSON.stringify({
                     name: trimmedName,
                     slug: slugify(trimmedName),
                     description: trimmedDescription,
+                    isAlcoholic: alcohol,
                     difficulty: DIFFICULTY_TO_LEVEL[difficulty],
                     prepTime: Number.isFinite(prepTimeValue) ? prepTimeValue : undefined,
-                    intensity: alcohol ? 3 : 1,
+                    styleId: styleId || undefined,
+                    ingredients: validIngredients.map((ingredient) => ({
+                        ingredientName: ingredient.name,
+                        quantity: ingredient.amount || undefined,
+                    })),
+                    steps: validSteps,
                 }),
             });
 
-            await Promise.all(
-                validIngredients.map((ingredient) =>
-                    apiFetch(`/cocktails/${createdCocktail.id}/ingredients`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            ingredientName: ingredient.name,
-                            quantity: ingredient.amount || undefined,
-                        }),
-                    })
-                )
-            );
-
-            await Promise.all(
-                validSteps.map((instruction, index) =>
-                    apiFetch(`/cocktails/${createdCocktail.id}/steps`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            stepNumber: index + 1,
-                            instruction,
-                        }),
-                    })
-                )
-            );
-
             if (trimmedImageUrl) {
-                await apiFetch(`/cocktails/${createdCocktail.id}/photos`, {
+                await apiFetch(`/cocktails/${createdCocktail.cocktail.id}/photos`, {
                     method: 'POST',
                     body: JSON.stringify({
                         url: trimmedImageUrl,
                         altText: trimmedName,
                         isPrimary: true,
                     }),
-                });
-            }
-
-            if (styleId) {
-                await apiFetch(`/cocktails/${createdCocktail.id}/style-links`, {
-                    method: 'POST',
-                    body: JSON.stringify({ styleId }),
                 });
             }
 
