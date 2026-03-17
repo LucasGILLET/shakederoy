@@ -1,64 +1,123 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Flame, Sparkles, Trophy } from 'lucide-react';
+import type { ComponentType } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Eye, Flame, Sparkles, Trophy } from 'lucide-react';
 import { CocktailCard } from '../components/CocktailCard';
-import { apiFetchList } from '../lib/api';
+import { apiFetch, apiFetchList } from '../lib/api';
 import { mapRawCocktail, type RawCocktail } from '../catalogue/catalogueFilters';
 
-type TrendFilter = 'hot' | 'new' | 'top';
+type MappedCocktail = ReturnType<typeof mapRawCocktail>;
 
-interface VoteRow {
+type TrendSection = {
     id: string;
-    vote_type: 'upvote' | 'downvote';
+    title: string;
+    description: string;
+    icon: ComponentType<{ className?: string }>;
+    iconClassName: string;
+    cocktails: MappedCocktail[];
+};
+
+interface CocktailOfMonthRow {
+    id: string;
+    cocktail_id: string;
+    rank: number;
+    year: number;
+    month: number;
+}
+
+function isApprovedCocktail(cocktail: RawCocktail) {
+    const status = typeof (cocktail as RawCocktail & { status?: unknown }).status === 'string'
+        ? String((cocktail as RawCocktail & { status?: unknown }).status)
+        : 'approved';
+
+    return status === 'approved';
 }
 
 export default function Trends() {
-    const [filter, setFilter] = useState<TrendFilter>('hot');
-    const [hotCocktails, setHotCocktails] = useState<ReturnType<typeof mapRawCocktail>[]>([]);
-    const [newCocktails, setNewCocktails] = useState<ReturnType<typeof mapRawCocktail>[]>([]);
-    const [topCocktails, setTopCocktails] = useState<ReturnType<typeof mapRawCocktail>[]>([]);
+    const [sections, setSections] = useState<TrendSection[]>([]);
+    const [cocktailOfMonth, setCocktailOfMonth] = useState<MappedCocktail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
         const loadTrends = async () => {
+            setLoading(true);
             setError('');
 
             try {
-                const cocktails = await apiFetchList<RawCocktail>('/cocktails');
-                const approvedCocktails = cocktails
-                    .filter((cocktail) => {
-                        const status = typeof (cocktail as RawCocktail & { status?: unknown }).status === 'string'
-                            ? String((cocktail as RawCocktail & { status?: unknown }).status)
-                            : 'approved';
-                        return status === 'approved';
-                    })
-                    .map(mapRawCocktail);
+                const currentDate = new Date();
 
-                const voteEntries = await Promise.all(
-                    approvedCocktails.slice(0, 12).map(async (cocktail) => {
-                        const votes = await apiFetchList<VoteRow>(`/cocktails/${cocktail.id}/votes`).catch(() => []);
-                        const score = votes.reduce((total, vote) => total + (vote.vote_type === 'upvote' ? 1 : -1), 0);
-                        return { cocktail, score, totalVotes: votes.length };
-                    })
-                );
+                const sectionRequests = [
+                    {
+                        id: 'top-voted',
+                        title: 'Top votes',
+                        description: 'Les cocktails les mieux notes par la communaute.',
+                        icon: Trophy,
+                        iconClassName: 'text-yellow-500',
+                        endpoint: '/cocktails?sort_by=best_rated&status=approved',
+                    },
+                    {
+                        id: 'most-viewed',
+                        title: 'Plus consultes',
+                        description: 'Les recettes les plus consultees du moment.',
+                        icon: Eye,
+                        iconClassName: 'text-sky-500',
+                        endpoint: '/cocktails?sort_by=most_viewed&status=approved',
+                    },
+                    {
+                        id: 'newest',
+                        title: 'Nouveautes',
+                        description: 'Les derniers cocktails publies et approuves.',
+                        icon: Sparkles,
+                        iconClassName: 'text-teal-500',
+                        endpoint: '/cocktails?sort_by=newest&status=approved',
+                    },
+                ] as const;
 
-                setNewCocktails(approvedCocktails.slice(0, 6));
-                setHotCocktails(
-                    [...voteEntries]
-                        .sort((a, b) => b.totalVotes - a.totalVotes)
-                        .slice(0, 6)
-                        .map((entry) => entry.cocktail)
-                );
-                setTopCocktails(
-                    [...voteEntries]
-                        .sort((a, b) => b.score - a.score)
-                        .slice(0, 3)
-                        .map((entry) => entry.cocktail)
-                );
+                const [loadedSections, ofMonthEntries] = await Promise.all([
+                    Promise.all(
+                        sectionRequests.map(async (section) => {
+                            const cocktails = await apiFetchList<RawCocktail>(section.endpoint);
+
+                            return {
+                                id: section.id,
+                                title: section.title,
+                                description: section.description,
+                                icon: section.icon,
+                                iconClassName: section.iconClassName,
+                                cocktails: cocktails
+                                    .filter(isApprovedCocktail)
+                                    .map(mapRawCocktail)
+                                    .slice(0, 6),
+                            };
+                        })
+                    ),
+                    apiFetchList<CocktailOfMonthRow>(
+                        `/cocktails/of-month?year=${currentDate.getFullYear()}&month=${currentDate.getMonth() + 1}`
+                    ).catch(() => []),
+                ]);
+
+                setSections(loadedSections);
+
+                const featuredEntry = [...ofMonthEntries].sort((a, b) => a.rank - b.rank)[0];
+
+                if (featuredEntry?.cocktail_id) {
+                    const featuredCocktail = await apiFetch<RawCocktail>(`/cocktails/${featuredEntry.cocktail_id}`).catch(() => null);
+
+                    if (featuredCocktail && isApprovedCocktail(featuredCocktail)) {
+                        setCocktailOfMonth(mapRawCocktail(featuredCocktail));
+                    } else {
+                        setCocktailOfMonth(null);
+                    }
+                } else {
+                    setCocktailOfMonth(null);
+                }
             } catch {
                 setError('Impossible de charger les tendances.');
+                setSections([]);
+                setCocktailOfMonth(null);
             } finally {
                 setLoading(false);
             }
@@ -66,18 +125,6 @@ export default function Trends() {
 
         void loadTrends();
     }, []);
-
-    const displayedCocktails = useMemo(() => {
-        if (filter === 'new') {
-            return newCocktails;
-        }
-
-        if (filter === 'top') {
-            return topCocktails;
-        }
-
-        return hotCocktails;
-    }, [filter, hotCocktails, newCocktails, topCocktails]);
 
     if (loading) {
         return (
@@ -97,7 +144,7 @@ export default function Trends() {
                             Tendances
                         </span>
                     </h1>
-                    <p className="text-2xl text-gray-600">Les cocktails les plus visibles et les plus apprecies.</p>
+                    <p className="text-2xl text-gray-600">Les cocktails qui font bouger ShakeDeRoy en ce moment.</p>
                 </div>
 
                 {error && (
@@ -106,80 +153,85 @@ export default function Trends() {
                     </div>
                 )}
 
-                <div className="flex justify-center gap-4 mb-12">
-                    <button
-                        type="button"
-                        onClick={() => setFilter('hot')}
-                        className={`px-8 py-4 font-bold text-lg border-4 transition-all transform skewX(-5deg) ${
-                            filter === 'hot'
-                                ? 'bg-gradient-to-r from-orange-400 to-red-500 text-white border-brand-dark shadow-lg'
-                                : 'bg-white text-gray-600 border-gray-300 hover:border-orange-400'
-                        }`}
-                    >
-                        <span className="transform skewX(5deg) inline-flex items-center gap-2">
-                            <Flame className="w-6 h-6" />
-                            Hot
-                        </span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setFilter('new')}
-                        className={`px-8 py-4 font-bold text-lg border-4 transition-all transform skewX(-5deg) ${
-                            filter === 'new'
-                                ? 'bg-gradient-to-r from-teal-400 to-blue-500 text-white border-brand-dark shadow-lg'
-                                : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400'
-                        }`}
-                    >
-                        <span className="transform skewX(5deg) inline-flex items-center gap-2">
-                            <Sparkles className="w-6 h-6" />
-                            Nouveaux
-                        </span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setFilter('top')}
-                        className={`px-8 py-4 font-bold text-lg border-4 transition-all transform skewX(-5deg) ${
-                            filter === 'top'
-                                ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-brand-dark shadow-lg'
-                                : 'bg-white text-gray-600 border-gray-300 hover:border-yellow-400'
-                        }`}
-                    >
-                        <span className="transform skewX(5deg) inline-flex items-center gap-2">
-                            <Trophy className="w-6 h-6" />
-                            Top
-                        </span>
-                    </button>
-                </div>
-
-                <div className="mb-8">
-                    <h2 className="text-3xl font-display mb-6 flex items-center gap-3">
-                        {filter === 'hot' && <><Flame className="w-8 h-8 text-orange-500" /> Les plus votes</>}
-                        {filter === 'new' && <><Sparkles className="w-8 h-8 text-teal-500" /> Les derniers approuves</>}
-                        {filter === 'top' && <><Trophy className="w-8 h-8 text-yellow-500" /> Les mieux notes</>}
-                    </h2>
-
-                    {displayedCocktails.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
-                            {displayedCocktails.map((cocktail, index) => (
-                                <div key={cocktail.id} className="relative animate-slide-left" style={{ animationDelay: `${index * 0.05}s` }}>
-                                    <CocktailCard {...cocktail} />
-                                    {filter === 'top' && index < 3 && (
-                                        <div className="absolute -top-3 -left-3 w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 border-4 border-brand-dark text-white font-black text-xl flex items-center justify-center transform rotate-12 shadow-lg z-10">
-                                            #{index + 1}
-                                        </div>
-                                    )}
+                {cocktailOfMonth && (
+                    <div className="card-skew bg-white p-8 mb-12 shadow-lg">
+                        <div className="transform skewY(2deg)">
+                            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                                <div>
+                                    <div className="inline-flex items-center gap-2 mb-3 bg-gradient-to-r from-yellow-400 to-orange-500 border-4 border-brand-dark px-4 py-2 font-black text-white transform -rotate-2">
+                                        <Flame className="w-5 h-5" />
+                                        Cocktail du mois
+                                    </div>
+                                    <h2 className="text-4xl font-display mb-2">{cocktailOfMonth.name}</h2>
+                                    <p className="text-lg text-gray-600 max-w-2xl">
+                                        {cocktailOfMonth.description || 'La selection mise en avant ce mois-ci.'}
+                                    </p>
                                 </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="card-skew bg-white p-16 text-center">
-                            <div className="transform skewY(2deg)">
-                                <h2 className="text-4xl font-display mb-4">Aucune tendance disponible</h2>
-                                <p className="text-xl text-gray-600">Les donnees de votes ne sont pas encore suffisantes.</p>
+                                <Link
+                                    href={`/cocktail/${cocktailOfMonth.id}`}
+                                    className="inline-flex items-center justify-center border-4 border-brand-dark bg-brand-primary px-6 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105"
+                                >
+                                    Voir le cocktail
+                                </Link>
                             </div>
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
+
+                {sections.length > 0 ? (
+                    <div className="space-y-14">
+                        {sections.map((section) => {
+                            const Icon = section.icon;
+
+                            return (
+                                <section key={section.id}>
+                                    <div className="mb-6 flex items-center gap-3">
+                                        <Icon className={`w-8 h-8 ${section.iconClassName}`} />
+                                        <div>
+                                            <h2 className="text-3xl font-display">{section.title}</h2>
+                                            <p className="text-gray-600">{section.description}</p>
+                                        </div>
+                                    </div>
+
+                                    {section.cocktails.length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
+                                            {section.cocktails.map((cocktail, index) => (
+                                                <div
+                                                    key={`${section.id}-${cocktail.id}`}
+                                                    className="relative animate-slide-left"
+                                                    style={{ animationDelay: `${index * 0.05}s` }}
+                                                >
+                                                    <CocktailCard {...cocktail} />
+                                                    {section.id === 'top-voted' && index < 3 && (
+                                                        <div className="absolute -top-3 -left-3 w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 border-4 border-brand-dark text-white font-black text-xl flex items-center justify-center transform rotate-12 shadow-lg z-10">
+                                                            #{index + 1}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="card-skew bg-white p-10 text-center">
+                                            <div className="transform skewY(2deg)">
+                                                <h3 className="text-3xl font-display mb-3">Aucune donnee disponible</h3>
+                                                <p className="text-lg text-gray-600">
+                                                    Cette section n&apos;a pas encore assez de donnees pour afficher des cocktails.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="card-skew bg-white p-16 text-center">
+                        <div className="transform skewY(2deg)">
+                            <h2 className="text-4xl font-display mb-4">Aucune tendance disponible</h2>
+                            <p className="text-xl text-gray-600">Le back ne renvoie encore aucun cocktail exploitable pour cette page.</p>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

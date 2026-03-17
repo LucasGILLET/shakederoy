@@ -12,19 +12,27 @@ interface CocktailCardProps {
     alcohol: boolean;
 }
 
-export function CocktailCard({ id, name, tags, difficulty, duration, alcohol }: CocktailCardProps) {
+export function CocktailCard({ id, name, image, tags, difficulty, duration, alcohol }: CocktailCardProps) {
     return (
         <Link href={`/cocktail/${id}`} className="block group">
             <div className="card-skew h-full flex flex-col">
                 <div className="transform skewY(2deg)">
-                    {/* Image Placeholder */}
                     <div className={clsx(
                         "w-full h-48 mb-4 flex items-center justify-center relative overflow-hidden",
                         alcohol ? "bg-gradient-to-br from-pink-200 to-purple-200" : "bg-gradient-to-br from-green-200 to-teal-200"
                     )}>
-                        <span className="font-display text-brand-dark opacity-20 text-5xl group-hover:scale-125 transition-transform duration-300">
-                            {name.substring(0, 2)}
-                        </span>
+                        {image ? (
+                            <img
+                                src={image}
+                                alt={name}
+                                className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                        ) : (
+                            <span className="font-display text-brand-dark opacity-20 text-5xl group-hover:scale-125 transition-transform duration-300">
+                                {name.substring(0, 2)}
+                            </span>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent" />
                         <div className="absolute top-3 right-3 flex gap-2">
                             {!alcohol && (
                                 <div className="badge-skew !bg-gradient-to-r !from-green-400 !to-emerald-400">
