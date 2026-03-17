@@ -9,7 +9,7 @@ import { apiFetch, apiFetchList } from '../lib/api';
 import { mapRawCocktail, type RawCocktail } from '../catalogue/catalogueFilters';
 
 type MappedCocktail = ReturnType<typeof mapRawCocktail>;
-type TrendCocktail = MappedCocktail & { voteCountValue: string };
+type TrendCocktail = MappedCocktail & { scoreValue: string };
 
 type TrendSection = {
     id: string;
@@ -111,7 +111,7 @@ export default function Trends() {
                                 iconClassName: section.iconClassName,
                                 cocktails: mappedCocktails.map((cocktail) => ({
                                     ...cocktail,
-                                    voteCountValue: String(voteSummaryMap.get(cocktail.id)?.total ?? 0),
+                                    scoreValue: String(voteSummaryMap.get(cocktail.id)?.score ?? 0),
                                 })),
                             };
                         })
@@ -225,8 +225,8 @@ export default function Trends() {
                                                 >
                                                     <CocktailCard
                                                         {...cocktail}
-                                                        metaLabel="votes"
-                                                        metaValue={cocktail.voteCountValue}
+                                                        metaLabel="score"
+                                                        metaValue={cocktail.scoreValue}
                                                     />
                                                     {section.id === 'top-voted' && index < 3 && (
                                                         <div className="absolute -top-3 -left-3 w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 border-4 border-brand-dark text-white font-black text-xl flex items-center justify-center transform rotate-12 shadow-lg z-10">

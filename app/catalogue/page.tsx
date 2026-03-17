@@ -176,7 +176,7 @@ export default function Catalogue() {
                     <div className="flex flex-col xl:flex-row gap-6 xl:items-end">
                         <div className="flex-1 w-full">
                             <label htmlFor="catalogue-search" className="font-bold text-xl uppercase mb-4 block ml-2">
-                                Rechercher un cocktail ou un ingredient
+                                Rechercher un cocktail
                             </label>
                             <div className="relative">
                                 <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-8 h-8 text-brand-dark pointer-events-none" />

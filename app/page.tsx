@@ -129,11 +129,11 @@ export default function Home() {
                 <div className="absolute inset-0 bg-brand-primary transform translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
               </button>
             </Link>
-            <Link href="/party">
+            {/* <Link href="/party">
               <button className="text-xl font-bold border-b-4 border-brand-dark pb-1 hover:text-brand-primary hover:border-brand-primary transition-all">
                 Mode Soirée ?
               </button>
-            </Link>
+            </Link> */}
           </div>
         </div>
       </section>
