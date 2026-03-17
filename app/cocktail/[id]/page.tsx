@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
-import { ArrowLeft, ChefHat, Clock, Gauge, Heart, Share2, ShoppingBag, Sparkles } from 'lucide-react';
+import { ArrowBigDown, ArrowBigUp, ArrowLeft, ChefHat, Clock, Gauge, Heart, Share2, ShoppingBag, Sparkles } from 'lucide-react';
 import { Button } from '@/app/components/Button';
 import { apiFetch, apiFetchList } from '@/app/lib/api';
 import { fetchFavoritesPage, toggleFavorite } from '@/app/lib/favoritesApi';
 import { extractFavoriteIds, mapRawCocktail, type RawCocktail } from '@/app/catalogue/catalogueFilters';
+import { useAuth } from '@/app/context/AuthContext';
 
 interface CocktailIngredientRow {
     id: string;
@@ -29,11 +30,22 @@ interface CocktailPhotoRow {
     is_primary?: boolean;
 }
 
+interface VoteSummary {
+    cocktail_id: string;
+    upvotes: number;
+    downvotes: number;
+    score: number;
+    total: number;
+    user_vote?: 'upvote' | 'downvote' | null;
+}
+
 export default function CocktailDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const { user, loading: authLoading } = useAuth();
     const [cocktail, setCocktail] = useState<ReturnType<typeof mapRawCocktail> | null>(null);
     const [similarCocktails, setSimilarCocktails] = useState<ReturnType<typeof mapRawCocktail>[]>([]);
     const [photos, setPhotos] = useState<CocktailPhotoRow[]>([]);
+    const [voteSummary, setVoteSummary] = useState<VoteSummary | null>(null);
     const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
     const [mounted, setMounted] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -41,6 +53,8 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
     const [error, setError] = useState('');
     const [shareMessage, setShareMessage] = useState('');
     const [favoriteError, setFavoriteError] = useState('');
+    const [voteError, setVoteError] = useState('');
+    const [voteLoading, setVoteLoading] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -49,15 +63,17 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
             setLoading(true);
             setError('');
             setFavoriteError('');
+            setVoteError('');
 
             try {
-                const [rawCocktail, ingredientsData, stepsData, photosData, allCocktails, favoritesData] = await Promise.all([
+                const [rawCocktail, ingredientsData, stepsData, photosData, allCocktails, favoritesData, voteSummaryData] = await Promise.all([
                     apiFetch<RawCocktail>(`/cocktails/${id}`),
                     apiFetch<CocktailIngredientRow[]>(`/cocktails/${id}/ingredients`).catch(() => []),
                     apiFetch<PreparationStepRow[]>(`/cocktails/${id}/steps`).catch(() => []),
                     apiFetch<CocktailPhotoRow[]>(`/cocktails/${id}/photos`).catch(() => []),
                     apiFetchList<RawCocktail>('/cocktails'),
                     fetchFavoritesPage().catch(() => []),
+                    apiFetch<VoteSummary>(`/cocktails/${id}/votes/summary`).catch(() => null),
                 ]);
 
                 const mappedCocktail = mapRawCocktail({
@@ -86,6 +102,7 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
                 setSimilarCocktails(approvedCocktails);
                 setPhotos(photosData);
                 setFavoriteIds(extractFavoriteIds(favoritesData));
+                setVoteSummary(voteSummaryData);
             } catch (fetchError: unknown) {
                 const message = fetchError instanceof Error ? fetchError.message : 'Impossible de charger ce cocktail.';
                 if (message.toLowerCase().includes('not found')) {
@@ -100,6 +117,23 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
 
         void fetchCocktailData();
     }, [id]);
+
+    useEffect(() => {
+        if (authLoading) {
+            return;
+        }
+
+        const loadVoteSummary = async () => {
+            try {
+                const summary = await apiFetch<VoteSummary>(`/cocktails/${id}/votes/summary`);
+                setVoteSummary(summary);
+            } catch {
+                setVoteSummary(null);
+            }
+        };
+
+        void loadVoteSummary();
+    }, [authLoading, id, user?.id]);
 
     const handleFavoriteToggle = async () => {
         if (!cocktail) {
@@ -130,6 +164,35 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
             setShareMessage('Lien copie.');
         } catch {
             setShareMessage('Copie du lien indisponible sur ce navigateur.');
+        }
+    };
+
+    const handleVote = async (voteType: 'upvote' | 'downvote') => {
+        if (!user) {
+            setVoteError('Connecte-toi pour voter sur ce cocktail.');
+            return;
+        }
+
+        setVoteError('');
+        setVoteLoading(true);
+
+        try {
+            await apiFetch(`/cocktails/${id}/votes`, {
+                method: 'POST',
+                body: JSON.stringify({ voteType }),
+            });
+
+            const summary = await apiFetch<VoteSummary>(`/cocktails/${id}/votes/summary`);
+            setVoteSummary(summary);
+        } catch (voteActionError: unknown) {
+            const message = voteActionError instanceof Error ? voteActionError.message : '';
+            if (message.toLowerCase().includes('unauthorized')) {
+                setVoteError('Connecte-toi pour voter sur ce cocktail.');
+            } else {
+                setVoteError('Impossible de mettre a jour le vote.');
+            }
+        } finally {
+            setVoteLoading(false);
         }
     };
 
@@ -178,6 +241,12 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
                 {favoriteError && (
                     <div className="mb-8 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800">
                         {favoriteError}
+                    </div>
+                )}
+
+                {voteError && (
+                    <div className="mb-8 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800">
+                        {voteError}
                     </div>
                 )}
 
@@ -272,6 +341,64 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
                             )}
                         </div>
 
+                        <div className="card-skew bg-white p-6">
+                            <div className="transform skewY(2deg)">
+                                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                                    <div>
+                                        <p className="text-sm font-black uppercase tracking-wide text-gray-500">Votes</p>
+                                        <div className="flex items-end gap-3">
+                                            <span className="text-5xl font-display">{voteSummary?.score ?? 0}</span>
+                                            <span className="pb-2 text-sm font-bold text-gray-500 uppercase">score</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600">
+                                            {voteSummary
+                                                ? `${voteSummary.upvotes} upvotes, ${voteSummary.downvotes} downvotes`
+                                                : 'Aucun vote pour le moment.'}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleVote('upvote')}
+                                                disabled={voteLoading || authLoading || !user}
+                                                className={`inline-flex items-center justify-center gap-2 border-4 px-5 py-3 font-black transition-all ${voteSummary?.user_vote === 'upvote'
+                                                    ? 'border-brand-dark bg-green-400 text-brand-dark'
+                                                    : 'border-brand-dark bg-white text-brand-dark hover:bg-green-50'
+                                                    } disabled:cursor-not-allowed disabled:opacity-50`}
+                                            >
+                                                <ArrowBigUp className="w-5 h-5" />
+                                                Upvote
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleVote('downvote')}
+                                                disabled={voteLoading || authLoading || !user}
+                                                className={`inline-flex items-center justify-center gap-2 border-4 px-5 py-3 font-black transition-all ${voteSummary?.user_vote === 'downvote'
+                                                    ? 'border-brand-dark bg-red-400 text-white'
+                                                    : 'border-brand-dark bg-white text-brand-dark hover:bg-red-50'
+                                                    } disabled:cursor-not-allowed disabled:opacity-50`}
+                                            >
+                                                <ArrowBigDown className="w-5 h-5" />
+                                                Downvote
+                                            </button>
+                                        </div>
+
+                                        <p className="text-sm text-gray-600">
+                                            {authLoading
+                                                ? 'Verification de la session...'
+                                                : user
+                                                    ? voteSummary?.user_vote
+                                                        ? `Ton vote actuel: ${voteSummary.user_vote === 'upvote' ? 'upvote' : 'downvote'}.`
+                                                        : 'Tu n as pas encore vote pour ce cocktail.'
+                                                    : 'Connecte-toi pour voter sur ce cocktail.'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex gap-4">
                             <Button size="lg" className="flex-1" onClick={() => void handleFavoriteToggle()}>
                                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
@@ -279,6 +406,7 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
                             </Button>
                             <Button variant="outline" size="lg" onClick={() => void handleShare()}>
                                 <Share2 className="w-5 h-5" />
+                                Copier le lien
                             </Button>
                         </div>
                     </div>
