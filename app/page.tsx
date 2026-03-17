@@ -214,22 +214,17 @@ export default function Home() {
             <p className="text-2xl text-gray-400 max-w-lg">
               Une explosion de fraîcheur avec une touche de luxe. Le classique revisité pour les rois et reines de la soirée.
             </p>
-            <div className="flex gap-4 pt-8">
+            {/* <div className="flex gap-4 pt-8">
               <Button className="!bg-white !text-brand-dark hover:!bg-brand-primary hover:!text-white !border-none text-xl px-10 py-6">
                 Voir la recette
               </Button>
-            </div>
+            </div> */}
           </div>
 
           <div className="flex-1 relative perspective-1000">
             <div className="relative w-full aspect-square bg-gradient-to-br from-green-400 to-blue-500 rounded-[3rem] border-8 border-white shadow-[0px_20px_50px_rgba(78,205,196,0.5)] transform rotate-y-12 rotate-x-6 hover:rotate-0 transition-transform duration-700 ease-out group">
               <div className="absolute inset-0 flex items-center justify-center text-[15rem] group-hover:scale-110 transition-transform duration-500">
                 🍹
-              </div>
-              {/* Floating Cards */}
-              <div className="absolute -right-10 top-10 bg-white text-brand-dark p-6 rounded-2xl shadow-xl transform translate-z-20 group-hover:translate-x-4 transition-transform delay-100">
-                <div className="font-bold text-sm uppercase text-gray-400">Note</div>
-                <div className="text-4xl font-black">4.9/5</div>
               </div>
               <div className="absolute -left-10 bottom-20 bg-brand-primary text-white p-6 rounded-2xl shadow-xl transform translate-z-30 group-hover:-translate-x-4 transition-transform delay-200">
                 <div className="font-bold text-sm uppercase opacity-80">Difficulté</div>
@@ -243,7 +238,7 @@ export default function Home() {
       </section>
 
       {/* Hall of Fame - Marquee Reverse */}
-      <section className="py-20 mb-20 overflow-hidden">
+      {/* <section className="py-20 mb-20 overflow-hidden">
         <h2 className="text-center text-4xl font-bold uppercase tracking-[1rem] mb-12 opacity-30">Hall of Fame</h2>
 
         <div className="whitespace-nowrap animate-marquee-reverse flex gap-8">
@@ -254,7 +249,7 @@ export default function Home() {
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
 
       {/* Final CTA */}
       <section className="container mx-auto px-4 pb-32 text-center">
@@ -264,9 +259,11 @@ export default function Home() {
             <h2 className="text-7xl md:text-9xl font-display text-white mb-8 group-hover:scale-105 transition-transform duration-500">
               READY ?
             </h2>
-            <Button size="lg" className="text-3xl px-16 py-8 !bg-brand-active !text-brand-dark !border-white hover:!scale-110 !skew-x-0 !rounded-full">
-              JE ME LANCE 🚀
-            </Button>
+            <Link href="/create">
+              <Button size="lg" className="text-3xl px-16 py-8 !bg-brand-active !text-brand-dark !border-white hover:!scale-110 !skew-x-0 !rounded-full">
+                JE ME LANCE 🚀
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

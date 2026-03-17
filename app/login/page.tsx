@@ -90,12 +90,6 @@ export default function Login() {
                         <Button className="w-full justify-center" size="lg" disabled={loading}>
                             {loading ? 'Connexion...' : 'Se connecter'}
                         </Button>
-
-                        <div className="text-center text-base font-bold text-gray-400 my-6">AUTH GOOGLE HORS MVP</div>
-
-                        <Button type="button" variant="outline" className="w-full justify-center" disabled>
-                            Indisponible pour cette demo
-                        </Button>
                     </form>
 
                     <p className="mt-8 text-center text-gray-600 text-lg">

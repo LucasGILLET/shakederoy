@@ -25,6 +25,10 @@ interface CocktailStyle {
     name: string;
 }
 
+interface PaginatedResponse<T> {
+    items: T[];
+}
+
 const DIFFICULTY_TO_LEVEL: Record<'Facile' | 'Moyen' | 'Difficile', 'easy' | 'medium' | 'hard'> = {
     Facile: 'easy',
     Moyen: 'medium',
@@ -74,8 +78,8 @@ export default function CreateCocktail() {
     useEffect(() => {
         const loadStyles = async () => {
             try {
-                const data = await apiFetch<CocktailStyle[]>('/cocktails/styles');
-                setStyles(data);
+                const data = await apiFetch<PaginatedResponse<CocktailStyle>>('/cocktails/styles');
+                setStyles(Array.isArray(data.items) ? data.items : []);
             } catch {
                 setStyles([]);
             }
@@ -234,7 +238,6 @@ export default function CreateCocktail() {
                     <h1 className="text-6xl font-display mb-4 hover-bounce">
                         Cree ton <span className="text-brand-primary">cocktail</span>
                     </h1>
-                    <p className="text-xl text-gray-600">Formulaire complet Sprint 2.</p>
                 </div>
 
                 {error && (
@@ -370,24 +373,6 @@ export default function CreateCocktail() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-brand-dark">
-                                            Style
-                                        </label>
-                                        <select
-                                            value={styleId}
-                                            onChange={(event) => setStyleId(event.target.value)}
-                                            className="w-full px-5 py-4 border-4 border-gray-300 focus:border-brand-primary focus:outline-none transition-all bg-white text-lg font-medium shadow-md"
-                                        >
-                                            <option value="">Aucun style</option>
-                                            {styles.map((style) => (
-                                                <option key={style.id} value={style.id}>
-                                                    {style.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
                                     <Input
                                         label="Image URL optionnelle"
                                         placeholder="https://..."
