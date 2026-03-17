@@ -9,8 +9,10 @@ import { useState } from 'react';
 export function Navbar() {
     const { user, logout } = useAuth();
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [showEasterEgg, setShowEasterEgg] = useState(false);
 
     return (
+        <>
         <nav className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md border-b-4 border-brand-primary shadow-lg">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-20">
@@ -97,5 +99,49 @@ export function Navbar() {
                 </div>
             </div>
         </nav>
+
+        {/* Invisible Easter Egg Trigger Zone at Top Right */}
+        <div 
+            className="fixed top-0 right-0 w-24 h-24 z-[9999] cursor-default"
+            onClick={(e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    setShowEasterEgg(true);
+                }
+            }}
+            onContextMenu={(e) => {
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    setShowEasterEgg(true);
+                }
+            }}
+        />
+
+        {/* Easter Egg Popup */}
+        {showEasterEgg && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setShowEasterEgg(false)}>
+                <div 
+                    className="bg-white p-6 rounded-2xl shadow-2xl max-w-lg w-full mx-4 transform scale-100 transition-transform duration-300 relative border-4 border-brand-primary" 
+                    onClick={e => e.stopPropagation()}
+                >
+                    <button 
+                        className="absolute -top-4 -right-4 bg-brand-primary w-10 h-10 rounded-full text-white font-bold text-xl flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+                        onClick={() => setShowEasterEgg(false)}
+                    >
+                        &times;
+                    </button>
+                    <h2 className="text-3xl font-display font-black text-brand-dark mb-4 text-center transform -skew-x-6">SURPRISE ! 🎉</h2>
+                    <img 
+                        src="/easter-egg.jpg" 
+                        alt="Easter Egg Pose" 
+                        className="w-full h-auto max-h-80 object-cover rounded-xl shadow-inner mb-6"
+                    />
+                    <p className="text-center text-lg font-bold text-gray-700 italic border-l-4 border-brand-primary pl-4 py-2 bg-pink-50 rounded-r-lg">
+                        "Encore une modif urgente !?!"<br/>
+                        <span className="text-sm font-normal">— Le développeur, en plein burn-out, qui prend la pose sur la table.</span>
+                    </p>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
