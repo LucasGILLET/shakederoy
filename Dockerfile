@@ -23,6 +23,11 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# 1. Force l'écoute sur toutes les interfaces (0.0.0.0)
+ENV HOSTNAME="0.0.0.0"
+# 2. Définit un port par défaut (Railway le surchargera automatiquement)
+ENV PORT=3000
+
 ARG BACKEND_URL
 ENV NEXT_PUBLIC_BACKEND_URL=$BACKEND_URL
 
