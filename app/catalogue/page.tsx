@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, RotateCcw, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react';
 import { Button } from '../components/Button';
 import { CocktailCard } from '../components/CocktailCard';
-import { apiFetch } from '../lib/api';
+import { apiFetchList } from '../lib/api';
 import { fetchFavoritesPage, toggleFavorite } from '../lib/favoritesApi';
 import type { Cocktail } from '../lib/data';
 import {
@@ -71,7 +71,7 @@ export default function Catalogue() {
                 });
 
                 const [cocktailData, favoritesData] = await Promise.all([
-                    apiFetch<RawCocktail[]>('/cocktails'),
+                    apiFetchList<RawCocktail>('/cocktails'),
                     favoritesPromise,
                 ]);
 

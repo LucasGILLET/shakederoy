@@ -1,4 +1,4 @@
-import { apiFetch } from '../api'
+import { apiFetch, apiFetchList } from '../api'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'https://shake-api-tmp.striffe.dev'
 
@@ -50,8 +50,30 @@ describe('API Endpoints - Cocktails', () => {
         json: async () => [],
       })
 
-      const result = await apiFetch<any[]>('/cocktails')
+      const result = await apiFetch<unknown[]>('/cocktails')
       expect(result).toEqual([])
+    })
+
+    it('extracts paginated cocktail data with apiFetchList', async () => {
+      const mockCocktails = [
+        { id: '1', name: 'Mojito' },
+        { id: '2', name: 'Martini' },
+      ]
+
+      globalThis.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: mockCocktails,
+          page: 1,
+          size: 10,
+          total: 2,
+          totalPages: 1,
+        }),
+      })
+
+      const result = await apiFetchList<typeof mockCocktails[number]>('/cocktails')
+      expect(result).toEqual(mockCocktails)
     })
   })
 

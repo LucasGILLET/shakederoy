@@ -4,6 +4,14 @@ interface FetchOptions extends RequestInit {
     headers?: HeadersInit;
 }
 
+interface PaginatedResponse<T> {
+    data: T[];
+    page: number;
+    size: number;
+    total: number;
+    totalPages: number;
+}
+
 type ApiErrorBody = {
     message?: string;
     error?: unknown;
@@ -67,4 +75,26 @@ export async function apiFetch<T>(endpoint: string, options: FetchOptions = {}):
     }
 
     return await response.json();
+}
+
+function isPaginatedResponse<T>(value: unknown): value is PaginatedResponse<T> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return false;
+    }
+
+    return Array.isArray((value as { data?: unknown }).data);
+}
+
+export async function apiFetchList<T>(endpoint: string, options: FetchOptions = {}): Promise<T[]> {
+    const response = await apiFetch<T[] | PaginatedResponse<T>>(endpoint, options);
+
+    if (Array.isArray(response)) {
+        return response;
+    }
+
+    if (isPaginatedResponse<T>(response)) {
+        return response.data;
+    }
+
+    throw new Error(`Unexpected list response for ${endpoint}.`);
 }

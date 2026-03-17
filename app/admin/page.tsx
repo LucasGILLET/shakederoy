@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle, Shield, Trash2, XCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
-import { apiFetch } from '../lib/api';
+import { apiFetch, apiFetchList } from '../lib/api';
 
 interface AdminCocktail {
     id: string;
@@ -41,7 +41,7 @@ export default function AdminPanel() {
             setError('');
 
             try {
-                const data = await apiFetch<AdminCocktail[]>('/cocktails');
+                const data = await apiFetchList<AdminCocktail>('/cocktails');
                 setCocktails(data);
             } catch {
                 setError('Impossible de charger les cocktails.');

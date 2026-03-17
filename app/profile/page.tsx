@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
-import { apiFetch } from '../lib/api';
+import { apiFetch, apiFetchList } from '../lib/api';
 import { fetchFavoritesPage } from '../lib/favoritesApi';
 import { extractFavoriteIds, getNextFavoritesPage, type RawCocktail } from '../catalogue/catalogueFilters';
 
@@ -40,7 +40,7 @@ export default function ProfilePage() {
             try {
                 const [currentUser, cocktails] = await Promise.all([
                     apiFetch<CurrentUser>('/users/self'),
-                    apiFetch<RawCocktail[]>('/cocktails'),
+                    apiFetchList<RawCocktail>('/cocktails'),
                 ]);
 
                 const allFavoriteIds = new Set<string>();

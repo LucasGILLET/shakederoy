@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Flame, Sparkles, Trophy } from 'lucide-react';
 import { CocktailCard } from '../components/CocktailCard';
-import { apiFetch } from '../lib/api';
+import { apiFetchList } from '../lib/api';
 import { mapRawCocktail, type RawCocktail } from '../catalogue/catalogueFilters';
 
 type TrendFilter = 'hot' | 'new' | 'top';
@@ -26,7 +26,7 @@ export default function Trends() {
             setError('');
 
             try {
-                const cocktails = await apiFetch<RawCocktail[]>('/cocktails');
+                const cocktails = await apiFetchList<RawCocktail>('/cocktails');
                 const approvedCocktails = cocktails
                     .filter((cocktail) => {
                         const status = typeof (cocktail as RawCocktail & { status?: unknown }).status === 'string'
@@ -38,7 +38,7 @@ export default function Trends() {
 
                 const voteEntries = await Promise.all(
                     approvedCocktails.slice(0, 12).map(async (cocktail) => {
-                        const votes = await apiFetch<VoteRow[]>(`/cocktails/${cocktail.id}/votes`).catch(() => []);
+                        const votes = await apiFetchList<VoteRow>(`/cocktails/${cocktail.id}/votes`).catch(() => []);
                         const score = votes.reduce((total, vote) => total + (vote.vote_type === 'upvote' ? 1 : -1), 0);
                         return { cocktail, score, totalVotes: votes.length };
                     })

@@ -6,7 +6,7 @@ import { Heart, Trash2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { CocktailCard } from '../components/CocktailCard';
 import { useAuth } from '../context/AuthContext';
-import { apiFetch } from '../lib/api';
+import { apiFetchList } from '../lib/api';
 import { fetchFavoritesPage, removeFavorite } from '../lib/favoritesApi';
 import { extractFavoriteIds, mapRawCocktail, type RawCocktail } from '../catalogue/catalogueFilters';
 
@@ -34,7 +34,7 @@ export default function Favorites() {
             try {
                 const [favoritesData, cocktailsData] = await Promise.all([
                     fetchFavoritesPage(),
-                    apiFetch<RawCocktail[]>('/cocktails'),
+                    apiFetchList<RawCocktail>('/cocktails'),
                 ]);
 
                 const favoriteIds = extractFavoriteIds(favoritesData);

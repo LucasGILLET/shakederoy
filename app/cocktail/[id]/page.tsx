@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
 import { ArrowLeft, ChefHat, Clock, Gauge, Heart, Share2, ShoppingBag, Sparkles } from 'lucide-react';
 import { Button } from '@/app/components/Button';
-import { apiFetch } from '@/app/lib/api';
+import { apiFetch, apiFetchList } from '@/app/lib/api';
 import { fetchFavoritesPage, toggleFavorite } from '@/app/lib/favoritesApi';
 import { extractFavoriteIds, mapRawCocktail, type RawCocktail } from '@/app/catalogue/catalogueFilters';
 
@@ -56,7 +56,7 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
                     apiFetch<CocktailIngredientRow[]>(`/cocktails/${id}/ingredients`).catch(() => []),
                     apiFetch<PreparationStepRow[]>(`/cocktails/${id}/steps`).catch(() => []),
                     apiFetch<CocktailPhotoRow[]>(`/cocktails/${id}/photos`).catch(() => []),
-                    apiFetch<RawCocktail[]>('/cocktails'),
+                    apiFetchList<RawCocktail>('/cocktails'),
                     fetchFavoritesPage().catch(() => []),
                 ]);
 

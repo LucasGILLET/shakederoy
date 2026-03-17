@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MapPin, Star } from 'lucide-react';
 import { CocktailCard } from '../components/CocktailCard';
-import { apiFetch } from '../lib/api';
+import { apiFetch, apiFetchList } from '../lib/api';
 import { mapRawCocktail, type RawCocktail } from '../catalogue/catalogueFilters';
 
 interface Bar {
@@ -37,7 +37,7 @@ export default function BarsPage() {
             try {
                 const [barsData, cocktailsData] = await Promise.all([
                     apiFetch<Bar[]>('/bars'),
-                    apiFetch<RawCocktail[]>('/cocktails'),
+                    apiFetchList<RawCocktail>('/cocktails'),
                 ]);
 
                 const mappedCocktails = cocktailsData

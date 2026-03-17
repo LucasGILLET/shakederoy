@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, Trash2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
-import { apiFetch } from '../lib/api';
+import { apiFetch, apiFetchList } from '../lib/api';
 import { mapRawCocktail, type RawCocktail } from '../catalogue/catalogueFilters';
 
 type CocktailStatus = 'draft' | 'pending' | 'approved' | 'rejected';
@@ -37,7 +37,7 @@ export default function MyCocktailsPage() {
             setError('');
 
             try {
-                const data = await apiFetch<OwnedCocktail[]>('/cocktails');
+                const data = await apiFetchList<OwnedCocktail>('/cocktails');
                 setCocktails(
                     data.filter((cocktail) => String(cocktail.created_by_id ?? '') === user.id)
                 );
