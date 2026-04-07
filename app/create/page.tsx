@@ -290,7 +290,7 @@ export default function CreateCocktail() {
 
                                 <div>
                                     <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-brand-dark">
-                                        Description
+                                        Description du cocktail
                                     </label>
                                     <textarea
                                         className="w-full px-5 py-4 border-4 border-gray-300 focus:border-brand-primary focus:outline-none transition-all bg-white text-lg font-medium shadow-md transform skewX(-2deg) focus:skewX(0deg) min-h-[120px]"
@@ -303,7 +303,7 @@ export default function CreateCocktail() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-brand-dark">
-                                            Difficulte
+                                            Difficulté
                                         </label>
                                         <div className="flex gap-2">
                                             {(['Facile', 'Moyen', 'Difficile'] as const).map((level) => (
