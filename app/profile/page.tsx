@@ -13,6 +13,7 @@ interface CurrentUser {
     email: string;
     role: 'admin' | 'user';
     username: string;
+    is_bar_owner: boolean;
 }
 
 export default function ProfilePage() {
@@ -40,7 +41,7 @@ export default function ProfilePage() {
             try {
                 const [currentUser, cocktails] = await Promise.all([
                     apiFetch<CurrentUser>('/users/self'),
-                    apiFetchList<RawCocktail>('/cocktails'),
+                    apiFetchList<RawCocktail>(`/cocktails?community=true&user_id=${encodeURIComponent(user.id)}`),
                 ]);
 
                 const allFavoriteIds = new Set<string>();
@@ -58,12 +59,8 @@ export default function ProfilePage() {
                     currentPage = nextPage;
                 }
 
-                const ownCocktails = cocktails.filter(
-                    (cocktail) => String(cocktail.created_by_id ?? '') === currentUser.id
-                );
-
                 setProfile(currentUser);
-                setCreatedCount(ownCocktails.length);
+                setCreatedCount(cocktails.length);
                 setFavoritesCount(allFavoriteIds.size);
             } catch {
                 setError('Impossible de charger le profil.');
@@ -111,6 +108,10 @@ export default function ProfilePage() {
                                 <div className="text-xl font-bold">{profile.role}</div>
                             </div>
                             <div className="border-4 border-brand-dark p-5 bg-gray-50">
+                                <div className="text-sm font-black uppercase text-gray-500 mb-2">Compte bar</div>
+                                <div className="text-xl font-bold">{profile.is_bar_owner ? 'Actif' : 'Non'}</div>
+                            </div>
+                            <div className="border-4 border-brand-dark p-5 bg-gray-50">
                                 <div className="text-sm font-black uppercase text-gray-500 mb-2">Favoris</div>
                                 <div className="text-4xl font-display text-brand-primary">{favoritesCount}</div>
                             </div>
@@ -122,6 +123,7 @@ export default function ProfilePage() {
 
                         <div className="flex flex-wrap gap-4">
                             <Button onClick={() => router.push('/favorites')}>Voir mes favoris</Button>
+                            <Button variant="outline" onClick={() => router.push('/collections')}>Voir mes collections</Button>
                             <Button variant="outline" onClick={() => router.push('/my-cocktails')}>Voir mes creations</Button>
                         </div>
                     </div>

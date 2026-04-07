@@ -153,7 +153,7 @@ export default function Favorites() {
                                     <button
                                         type="button"
                                         onClick={() => void handleRemoveFavorite(cocktail.id)}
-                                        className="absolute top-4 right-4 p-2 bg-white border-2 border-red-400 text-red-500 hover:bg-red-50 transition-all transform skewX(-5deg) hover:scale-110 shadow-lg z-10"
+                                        className="favorite-badge favorite-badge-active absolute top-4 right-4 p-2 bg-white border-2 border-red-400 text-red-500 hover:bg-red-50 transition-all transform skewX(-5deg) hover:scale-110 shadow-lg z-10"
                                         title="Retirer des favoris"
                                         aria-label="Retirer des favoris"
                                     >

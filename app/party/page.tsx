@@ -1,321 +1,251 @@
 'use client';
 
 import { Button } from '@/app/components/Button';
-import { useState } from 'react';
-import { Users, Copy, Check, Sparkles, ArrowRight, ShoppingCart, ChefHat } from 'lucide-react';
+import { useAuth } from '@/app/context/AuthContext';
+import {
+  createPartySession,
+  getPartySessionByCode,
+  joinPartySession,
+  listPartyParticipants,
+} from '@/app/lib/partyApi';
+import { ArrowRight, LogIn, RefreshCw, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { FormEvent, useMemo, useState } from 'react';
 
-type PartyStep = 'setup' | 'lobby' | 'preferences' | 'results';
-
-interface Guest {
-    id: string;
-    name: string;
-    preferences: {
-        alcohol: boolean;
-        intensity: 'light' | 'medium' | 'strong';
-        tastes: string[];
-    };
+function generatePartyCode() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
-export default function PartyMode() {
-    const [step, setStep] = useState<PartyStep>('setup');
-    const [partyName, setPartyName] = useState('');
-    const [partyCode] = useState('SHAKE2024');
-    const [copied, setCopied] = useState(false);
-    const [guests, setGuests] = useState<Guest[]>([
-        { id: '1', name: 'Toi', preferences: { alcohol: true, intensity: 'medium', tastes: [] } }
-    ]);
+export default function PartyModeEntryPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
 
-    const copyCode = () => {
-        navigator.clipboard.writeText(partyCode);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
+  const [createName, setCreateName] = useState('');
+  const [createCode, setCreateCode] = useState(generatePartyCode);
+  const [joinCode, setJoinCode] = useState('');
+  const [joinDisplayName, setJoinDisplayName] = useState('');
+  const [createError, setCreateError] = useState('');
+  const [joinError, setJoinError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
 
-    // Mock recommended cocktails
-    const recommendedCocktails = [
-        { name: 'Mojito Royal', servings: 4, emoji: '🍹' },
-        { name: 'Cosmopolitan', servings: 3, emoji: '🍸' },
-        { name: 'Virgin Colada', servings: 2, emoji: '🥥' },
-    ];
+  const authMessage = useMemo(() => {
+    if (loading) return 'Verification de la session en cours...';
+    if (user) return `Connecte en tant que ${user.username}.`;
+    return 'Le back exige une session authentifiee pour creer, rejoindre et generer.';
+  }, [loading, user]);
 
-    const ingredients = [
-        { name: 'Rhum Blanc', amount: '16cl', emoji: '🥃' },
-        { name: 'Menthe Fraîche', amount: '32 feuilles', emoji: '🌿' },
-        { name: 'Citron Vert', amount: '2', emoji: '🍋' },
-        { name: 'Vodka', amount: '12cl', emoji: '🍾' },
-        { name: 'Jus d\'Ananas', amount: '24cl', emoji: '🍍' },
-        { name: 'Lait de Coco', amount: '8cl', emoji: '🥥' },
-    ];
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user) {
+      setCreateError('Connecte-toi pour creer une soiree.');
+      return;
+    }
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-orange-100 py-12">
-            <div className="max-w-6xl mx-auto px-4">
-                {/* Header */}
-                <div className="text-center mb-12 animate-bounce-in">
-                    <div className="text-8xl mb-4 animate-wiggle">🎊</div>
-                    <h1 className="text-7xl font-display mb-4 hover-bounce">
-                        Mode <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500">Soirée</span>
-                    </h1>
-                    <p className="text-2xl text-gray-600">Organise la soirée parfaite avec tes potes !</p>
-                </div>
+    setCreating(true);
+    setCreateError('');
 
-                {/* Setup Step */}
-                {step === 'setup' && (
-                    <div className="max-w-2xl mx-auto animate-slide-left">
-                        <div className="card-skew bg-white p-10">
-                            <div className="transform skewY(2deg)">
-                                <h2 className="text-4xl font-display mb-8 text-center">C'est parti ! 🚀</h2>
+    try {
+      const session = await createPartySession({
+        code: createCode.trim().toUpperCase(),
+        name: createName.trim() || undefined,
+      });
 
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-brand-dark">
-                                            Nom de ta soirée
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="w-full px-5 py-4 border-4 border-gray-300 focus:border-brand-primary focus:outline-none transition-all bg-white text-lg font-medium shadow-md transform skewX(-2deg) focus:skewX(0deg)"
-                                            placeholder="Ex: Soirée d'été 2024"
-                                            value={partyName}
-                                            onChange={(e) => setPartyName(e.target.value)}
-                                        />
-                                    </div>
+      router.push(`/party/${session.id}?created=1`);
+    } catch (error) {
+      setCreateError(
+        error instanceof Error ? error.message : 'Creation impossible.'
+      );
+    } finally {
+      setCreating(false);
+    }
+  }
 
-                                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 border-4 border-purple-200">
-                                        <h3 className="font-display text-2xl mb-4">Comment ça marche ?</h3>
-                                        <ol className="space-y-3 text-lg">
-                                            <li className="flex gap-3">
-                                                <span className="font-black text-brand-primary">1.</span>
-                                                <span>Crée ta soirée et partage le code avec tes amis</span>
-                                            </li>
-                                            <li className="flex gap-3">
-                                                <span className="font-black text-brand-primary">2.</span>
-                                                <span>Chacun indique ses préférences (alcool, goûts...)</span>
-                                            </li>
-                                            <li className="flex gap-3">
-                                                <span className="font-black text-brand-primary">3.</span>
-                                                <span>L'app génère les cocktails parfaits + la liste de courses !</span>
-                                            </li>
-                                        </ol>
-                                    </div>
+  async function handleJoin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user) {
+      setJoinError('Connecte-toi pour rejoindre une soiree.');
+      return;
+    }
 
-                                    <Button
-                                        className="w-full justify-center"
-                                        size="lg"
-                                        onClick={() => setStep('lobby')}
-                                    >
-                                        Créer la soirée <ArrowRight className="w-6 h-6" />
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+    setJoining(true);
+    setJoinError('');
 
-                {/* Lobby Step */}
-                {step === 'lobby' && (
-                    <div className="animate-bounce-in">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                            {/* Left: Party Info */}
-                            <div className="card-skew bg-white p-8">
-                                <div className="transform skewY(2deg)">
-                                    <h2 className="text-4xl font-display mb-6">{partyName || 'Ma Soirée'}</h2>
+    try {
+      const session = await getPartySessionByCode(joinCode.trim().toUpperCase());
+      const participants = await listPartyParticipants(session.id);
+      const existingParticipant = participants.find(
+        (participant) => participant.user_id === user.id
+      );
 
-                                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-8 text-center mb-6 transform skewX(-3deg)">
-                                        <div className="transform skewX(3deg)">
-                                            <p className="text-white/80 font-bold mb-2">Code de la soirée</p>
-                                            <div className="text-6xl font-display text-white mb-4">{partyCode}</div>
-                                            <button
-                                                onClick={copyCode}
-                                                className="inline-flex items-center gap-2 bg-white text-brand-primary px-6 py-3 font-bold border-4 border-white hover:bg-pink-50 transition-all"
-                                            >
-                                                {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                                                {copied ? 'Copié !' : 'Copier le code'}
-                                            </button>
-                                        </div>
-                                    </div>
+      if (!existingParticipant) {
+        await joinPartySession(session.id, {
+          userId: user.id,
+          guestName: joinDisplayName.trim() || user.username,
+        });
+      }
 
-                                    <div className="space-y-4">
-                                        <h3 className="font-display text-2xl flex items-center gap-2">
-                                            <Users className="w-6 h-6" />
-                                            Participants ({guests.length})
-                                        </h3>
-                                        {guests.map((guest) => (
-                                            <div key={guest.id} className="flex items-center gap-3 p-4 bg-gray-50 border-2 border-gray-200">
-                                                <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                                                    {guest.name[0]}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="font-bold text-lg">{guest.name}</div>
-                                                    <div className="text-sm text-gray-500">En attente de préférences...</div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
+      router.push(`/party/${session.id}?joined=1`);
+    } catch (error) {
+      setJoinError(
+        error instanceof Error ? error.message : 'Impossible de rejoindre la soiree.'
+      );
+    } finally {
+      setJoining(false);
+    }
+  }
 
-                            {/* Right: Preferences */}
-                            <div className="card-skew bg-gradient-to-br from-white to-purple-50 p-8">
-                                <div className="transform skewY(2deg)">
-                                    <h2 className="text-3xl font-display mb-6">Tes préférences 🎯</h2>
-
-                                    <div className="space-y-6">
-                                        <div>
-                                            <label className="block text-sm font-bold mb-3 uppercase tracking-wide text-brand-dark">
-                                                Type de cocktails
-                                            </label>
-                                            <div className="flex gap-3">
-                                                <button className="flex-1 py-4 px-4 font-bold border-4 bg-brand-secondary text-white border-brand-dark transform skewX(-5deg)">
-                                                    <span className="transform skewX(5deg) inline-block">🍸 Avec alcool</span>
-                                                </button>
-                                                <button className="flex-1 py-4 px-4 font-bold border-4 bg-white text-gray-600 border-gray-300 hover:border-brand-secondary transform skewX(-5deg)">
-                                                    <span className="transform skewX(5deg) inline-block">🥤 Sans alcool</span>
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-bold mb-3 uppercase tracking-wide text-brand-dark">
-                                                Intensité
-                                            </label>
-                                            <div className="flex gap-2">
-                                                {['Léger', 'Moyen', 'Fort'].map((level) => (
-                                                    <button
-                                                        key={level}
-                                                        className={`flex-1 py-3 px-3 font-bold border-4 transition-all transform skewX(-5deg) ${level === 'Moyen'
-                                                            ? 'bg-brand-primary text-white border-brand-dark'
-                                                            : 'bg-white text-gray-600 border-gray-300 hover:border-brand-primary'
-                                                            }`}
-                                                    >
-                                                        <span className="transform skewX(5deg) inline-block text-sm">{level}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-bold mb-3 uppercase tracking-wide text-brand-dark">
-                                                Goûts préférés
-                                            </label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {['Fruité', 'Frais', 'Acidulé', 'Sucré', 'Amer'].map((taste) => (
-                                                    <button
-                                                        key={taste}
-                                                        className="px-4 py-2 font-bold border-3 border-gray-300 bg-white hover:border-brand-primary hover:bg-brand-primary hover:text-white transition-all transform skewX(-5deg)"
-                                                    >
-                                                        <span className="transform skewX(5deg) inline-block text-sm">{taste}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <Button
-                                            className="w-full justify-center"
-                                            size="lg"
-                                            onClick={() => setStep('results')}
-                                        >
-                                            Générer les cocktails ! <Sparkles className="w-6 h-6" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Results Step */}
-                {step === 'results' && (
-                    <div className="space-y-8 animate-slide-left">
-                        {/* Success Banner */}
-                        <div className="relative bg-gradient-to-r from-green-400 via-teal-400 to-blue-400 p-12 text-center overflow-hidden transform skewY(-2deg) shadow-2xl">
-                            <div className="absolute inset-0 bg-white/10"></div>
-                            <div className="relative z-10 transform skewY(2deg)">
-                                <div className="text-7xl mb-4">🎉</div>
-                                <h2 className="text-5xl font-display text-white mb-4">C'est prêt !</h2>
-                                <p className="text-2xl text-white/90">Voici les cocktails parfaits pour ta soirée</p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                            {/* Recommended Cocktails */}
-                            <div className="card-skew bg-white p-8">
-                                <div className="transform skewY(2deg)">
-                                    <h3 className="text-3xl font-display mb-6 flex items-center gap-2">
-                                        <ChefHat className="w-8 h-8 text-brand-primary" />
-                                        Menu de la soirée
-                                    </h3>
-
-                                    <div className="space-y-4">
-                                        {recommendedCocktails.map((cocktail, idx) => (
-                                            <div key={idx} className="flex items-center justify-between p-4 bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-brand-primary">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="text-4xl">{cocktail.emoji}</div>
-                                                    <div>
-                                                        <div className="font-display text-xl">{cocktail.name}</div>
-                                                        <div className="text-sm text-gray-600">{cocktail.servings} personnes</div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-3xl font-display text-brand-primary">×{cocktail.servings}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="mt-6 p-4 bg-yellow-50 border-4 border-yellow-300 text-center">
-                                        <p className="font-bold text-lg">Total: {recommendedCocktails.reduce((acc, c) => acc + c.servings, 0)} cocktails</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Shopping List */}
-                            <div className="card-skew bg-gradient-to-br from-white to-green-50 p-8">
-                                <div className="transform skewY(2deg)">
-                                    <h3 className="text-3xl font-display mb-6 flex items-center gap-2">
-                                        <ShoppingCart className="w-8 h-8 text-green-600" />
-                                        Liste de courses
-                                    </h3>
-
-                                    <div className="space-y-3">
-                                        {ingredients.map((ing, idx) => (
-                                            <div key={idx} className="flex items-center gap-3 p-3 bg-white border-2 border-gray-200 hover:border-green-400 transition-all">
-                                                <input type="checkbox" className="w-5 h-5 accent-green-500" />
-                                                <div className="text-3xl">{ing.emoji}</div>
-                                                <div className="flex-1">
-                                                    <div className="font-bold">{ing.name}</div>
-                                                </div>
-                                                <div className="font-mono font-bold text-green-600">{ing.amount}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="mt-6 flex gap-3">
-                                        <Button variant="outline" className="flex-1">
-                                            📄 Export PDF
-                                        </Button>
-                                        <Button variant="secondary" className="flex-1">
-                                            📱 Partager
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Mode Barman */}
-                        <div className="card-skew bg-gradient-to-br from-purple-500 to-pink-500 p-8 text-white">
-                            <div className="transform skewY(2deg)">
-                                <h3 className="text-4xl font-display mb-4 flex items-center gap-3">
-                                    👨‍🍳 Mode Barman
-                                </h3>
-                                <p className="text-xl mb-6 opacity-90">
-                                    Lance le mode pas-à-pas pour préparer tous les cocktails dans l'ordre optimal !
-                                </p>
-                                <Button variant="outline" size="lg" className="!bg-white !text-brand-primary !border-white">
-                                    Lancer le mode barman <ArrowRight className="w-6 h-6" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+  return (
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(248,113,113,0.22),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.22),_transparent_30%),linear-gradient(135deg,_#fff7ed,_#fffbeb_45%,_#ffffff)] py-12">
+      <div className="mx-auto flex max-w-6xl flex-col gap-10 px-4">
+        <section className="rounded-[2rem] border-4 border-brand-dark bg-white/90 p-8 shadow-[10px_10px_0_0_rgba(31,41,55,0.12)]">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl space-y-4">
+              <h1 className="font-display text-5xl text-brand-dark md:text-6xl">
+                Mode soirée
+              </h1>
+              <p className="text-lg text-slate-700">
+                Cree une session reelle, rejoins-la avec un code, puis pilote les
+                preferences, la generation des cocktails et la vue barman depuis
+                les endpoints existants.
+              </p>
             </div>
-        </div>
-    );
+            <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-4 text-sm text-slate-600">
+              {authMessage}
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-8 lg:grid-cols-2">
+          <article className="rounded-[2rem] border-4 border-brand-dark bg-white p-8 shadow-[8px_8px_0_0_rgba(251,146,60,0.16)]">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="rounded-2xl bg-orange-100 p-3 text-orange-700">
+                <Users className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="font-display text-3xl text-brand-dark">
+                  Creer une soiree
+                </h2>
+              </div>
+            </div>
+
+            <form className="space-y-5" onSubmit={handleCreate}>
+              <label className="block space-y-2">
+                <span className="text-sm font-bold uppercase tracking-wide text-slate-700">
+                  Nom de la soiree
+                </span>
+                <input
+                  className="w-full rounded-2xl border-2 border-slate-300 px-4 py-3 outline-none transition focus:border-brand-primary"
+                  placeholder="Ex: Afterwork M2"
+                  value={createName}
+                  onChange={(event) => setCreateName(event.target.value)}
+                />
+              </label>
+
+              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                <label className="block space-y-2">
+                  <span className="text-sm font-bold uppercase tracking-wide text-slate-700">
+                    Code session
+                  </span>
+                  <input
+                    className="w-full rounded-2xl border-2 border-slate-300 px-4 py-3 font-mono text-lg uppercase outline-none transition focus:border-brand-primary"
+                    minLength={4}
+                    required
+                    value={createCode}
+                    onChange={(event) =>
+                      setCreateCode(event.target.value.toUpperCase())
+                    }
+                  />
+                </label>
+
+                <Button
+                  className="mt-auto justify-center"
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCreateCode(generatePartyCode())}
+                >
+                  Regenerer <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {createError ? (
+                <p className="rounded-2xl border-2 border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {createError}
+                </p>
+              ) : null}
+
+              <Button
+                className="w-full justify-center"
+                size="lg"
+                disabled={creating || loading || !user}
+                type="submit"
+              >
+                {creating ? 'Creation...' : 'Creer la session'}
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </form>
+          </article>
+
+          <article className="rounded-[2rem] border-4 border-brand-dark bg-white p-8 shadow-[8px_8px_0_0_rgba(59,130,246,0.16)]">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="rounded-2xl bg-sky-100 p-3 text-sky-700">
+                <LogIn className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="font-display text-3xl text-brand-dark">
+                  Rejoindre une soiree
+                </h2>
+              </div>
+            </div>
+
+            <form className="space-y-5" onSubmit={handleJoin}>
+              <label className="block space-y-2">
+                <span className="text-sm font-bold uppercase tracking-wide text-slate-700">
+                  Code session
+                </span>
+                <input
+                  className="w-full rounded-2xl border-2 border-slate-300 px-4 py-3 font-mono text-lg uppercase outline-none transition focus:border-brand-primary"
+                  minLength={4}
+                  placeholder="ABCD12"
+                  required
+                  value={joinCode}
+                  onChange={(event) =>
+                    setJoinCode(event.target.value.toUpperCase())
+                  }
+                />
+              </label>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-bold uppercase tracking-wide text-slate-700">
+                  Nom affiche
+                </span>
+                <input
+                  className="w-full rounded-2xl border-2 border-slate-300 px-4 py-3 outline-none transition focus:border-brand-primary"
+                  placeholder={user?.username ?? 'Ton nom pour la soiree'}
+                  value={joinDisplayName}
+                  onChange={(event) => setJoinDisplayName(event.target.value)}
+                />
+              </label>
+
+              {joinError ? (
+                <p className="rounded-2xl border-2 border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {joinError}
+                </p>
+              ) : null}
+
+              <Button
+                className="w-full justify-center"
+                size="lg"
+                disabled={joining || loading || !user}
+                type="submit"
+              >
+                {joining ? 'Connexion...' : 'Rejoindre la session'}
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </form>
+          </article>
+        </section>
+      </div>
+    </div>
+  );
 }

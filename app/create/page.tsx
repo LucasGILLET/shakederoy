@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, Check, Plus, Sparkles, Trash2 } from 'lucide-rea
 import { Button } from '@/app/components/Button';
 import { Input } from '@/app/components/Input';
 import { useAuth } from '@/app/context/AuthContext';
-import { apiFetch } from '@/app/lib/api';
+import { apiFetch, apiFetchList } from '@/app/lib/api';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -23,10 +23,6 @@ interface CocktailStep {
 interface CocktailStyle {
     id: string;
     name: string;
-}
-
-interface PaginatedResponse<T> {
-    items: T[];
 }
 
 const DIFFICULTY_TO_LEVEL: Record<'Facile' | 'Moyen' | 'Difficile', 'easy' | 'medium' | 'hard'> = {
@@ -78,8 +74,8 @@ export default function CreateCocktail() {
     useEffect(() => {
         const loadStyles = async () => {
             try {
-                const data = await apiFetch<PaginatedResponse<CocktailStyle>>('/cocktails/styles');
-                setStyles(Array.isArray(data.items) ? data.items : []);
+                const data = await apiFetchList<CocktailStyle>('/cocktails/styles');
+                setStyles(data);
             } catch {
                 setStyles([]);
             }
@@ -290,7 +286,7 @@ export default function CreateCocktail() {
 
                                 <div>
                                     <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-brand-dark">
-                                        Description
+                                        Description du cocktail
                                     </label>
                                     <textarea
                                         className="w-full px-5 py-4 border-4 border-gray-300 focus:border-brand-primary focus:outline-none transition-all bg-white text-lg font-medium shadow-md transform skewX(-2deg) focus:skewX(0deg) min-h-[120px]"

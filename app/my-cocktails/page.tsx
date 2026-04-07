@@ -37,10 +37,8 @@ export default function MyCocktailsPage() {
             setError('');
 
             try {
-                const data = await apiFetchList<OwnedCocktail>('/cocktails');
-                setCocktails(
-                    data.filter((cocktail) => String(cocktail.created_by_id ?? '') === user.id)
-                );
+                const data = await apiFetchList<OwnedCocktail>(`/cocktails?community=true&user_id=${encodeURIComponent(user.id)}`);
+                setCocktails(data);
             } catch {
                 setError('Impossible de charger tes creations.');
             } finally {

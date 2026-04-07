@@ -5,6 +5,7 @@ import { use, useEffect, useState } from 'react';
 import { ArrowBigDown, ArrowBigUp, ArrowLeft, Check, ChefHat, Clock, Copy, ExternalLink, Gauge, Heart, Share2, ShoppingBag, Sparkles } from 'lucide-react';
 import { Button } from '@/app/components/Button';
 import { apiFetch, apiFetchList } from '@/app/lib/api';
+import { addCocktailToCollection, listMyCollections, type Collection } from '@/app/lib/collectionsApi';
 import { fetchFavoritesPage, toggleFavorite } from '@/app/lib/favoritesApi';
 import { extractFavoriteIds, mapRawCocktail, type RawCocktail } from '@/app/catalogue/catalogueFilters';
 import { useAuth } from '@/app/context/AuthContext';
@@ -55,8 +56,13 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
     const [shareUrl, setShareUrl] = useState('');
     const [favoriteError, setFavoriteError] = useState('');
     const [voteError, setVoteError] = useState('');
+    const [collectionError, setCollectionError] = useState('');
+    const [collectionMessage, setCollectionMessage] = useState('');
+    const [collections, setCollections] = useState<Collection[]>([]);
+    const [selectedCollectionId, setSelectedCollectionId] = useState('');
     const [voteLoading, setVoteLoading] = useState(false);
     const [shareLoading, setShareLoading] = useState(false);
+    const [collectionLoading, setCollectionLoading] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -122,6 +128,12 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
     }, [id]);
 
     useEffect(() => {
+        void apiFetch(`/cocktails/${id}/views`, {
+            method: 'POST',
+        }).catch(() => undefined);
+    }, [id]);
+
+    useEffect(() => {
         if (authLoading) {
             return;
         }
@@ -137,6 +149,27 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
 
         void loadVoteSummary();
     }, [authLoading, id, user?.id]);
+
+    useEffect(() => {
+        if (authLoading || !user) {
+            setCollections([]);
+            setSelectedCollectionId('');
+            return;
+        }
+
+        const loadCollections = async () => {
+            try {
+                const data = await listMyCollections();
+                setCollections(data);
+                setSelectedCollectionId((current) => current || data[0]?.id || '');
+            } catch {
+                setCollections([]);
+                setSelectedCollectionId('');
+            }
+        };
+
+        void loadCollections();
+    }, [authLoading, user]);
 
     const handleFavoriteToggle = async () => {
         if (!cocktail) {
@@ -232,6 +265,32 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
         }
     };
 
+    const handleAddToCollection = async () => {
+        if (!cocktail || !selectedCollectionId) {
+            return;
+        }
+
+        setCollectionLoading(true);
+        setCollectionError('');
+        setCollectionMessage('');
+
+        try {
+            await addCocktailToCollection(selectedCollectionId, cocktail.id);
+            const selectedCollection = collections.find((collection) => collection.id === selectedCollectionId);
+            setCollectionMessage(
+                `Ajoute a ${selectedCollection?.name || 'la collection'}`
+            );
+        } catch (collectionActionError: unknown) {
+            setCollectionError(
+                collectionActionError instanceof Error
+                    ? collectionActionError.message
+                    : 'Impossible d ajouter a la collection.'
+            );
+        } finally {
+            setCollectionLoading(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-[#FFF9F0] flex items-center justify-center">
@@ -286,9 +345,21 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
                     </div>
                 )}
 
+                {collectionError && (
+                    <div className="mb-8 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800">
+                        {collectionError}
+                    </div>
+                )}
+
                 {shareMessage && (
                     <div className="mb-8 p-4 bg-green-100 border-l-4 border-green-500 text-green-800">
                         {shareMessage}
+                    </div>
+                )}
+
+                {collectionMessage && (
+                    <div className="mb-8 p-4 bg-green-100 border-l-4 border-green-500 text-green-800">
+                        {collectionMessage}
                     </div>
                 )}
 
@@ -490,10 +561,45 @@ export default function CocktailDetail({ params }: { params: Promise<{ id: strin
 
                         <div className="flex gap-4">
                             <Button size="lg" className="flex-1" onClick={() => void handleFavoriteToggle()}>
-                                <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
+                                <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current animate-favorite-pop' : ''}`} />
                                 {isFavorite ? ' Retirer des favoris' : ' Ajouter aux favoris'}
                             </Button>
                         </div>
+
+                        {user ? (
+                            <div className="card-skew bg-white p-6">
+                                <div className="transform skewY(2deg)">
+                                    <p className="text-sm font-black uppercase tracking-wide text-gray-500">Collections</p>
+                                    {collections.length > 0 ? (
+                                        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                                            <select
+                                                value={selectedCollectionId}
+                                                onChange={(event) => setSelectedCollectionId(event.target.value)}
+                                                className="min-w-0 flex-1 border-4 border-brand-dark bg-white px-4 py-3 font-bold"
+                                            >
+                                                {collections.map((collection) => (
+                                                    <option key={collection.id} value={collection.id}>
+                                                        {collection.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <Button
+                                                size="lg"
+                                                className="sm:w-auto"
+                                                disabled={!selectedCollectionId || collectionLoading}
+                                                onClick={() => void handleAddToCollection()}
+                                            >
+                                                {collectionLoading ? 'Ajout...' : 'Ajouter a une collection'}
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <p className="mt-3 text-sm text-gray-600">
+                                            Aucune collection pour le moment. Cree-en une depuis la page Collections.
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
 

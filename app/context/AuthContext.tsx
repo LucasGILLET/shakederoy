@@ -9,6 +9,7 @@ interface User {
     username: string;
     email: string;
     role: 'admin' | 'user';
+    is_bar_owner: boolean;
 }
 
 interface AuthContextType {

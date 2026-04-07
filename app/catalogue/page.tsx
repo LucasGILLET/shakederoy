@@ -71,18 +71,11 @@ export default function Catalogue() {
                 });
 
                 const [cocktailData, favoritesData] = await Promise.all([
-                    apiFetchList<RawCocktail>('/cocktails'),
+                    apiFetchList<RawCocktail>('/cocktails?status=approved'),
                     favoritesPromise,
                 ]);
 
-                const visibleCocktails = cocktailData.filter((cocktail) => {
-                    const status = typeof (cocktail as RawCocktail & { status?: unknown }).status === 'string'
-                        ? String((cocktail as RawCocktail & { status?: unknown }).status)
-                        : 'approved';
-                    return status === 'approved';
-                });
-
-                setCocktails(visibleCocktails.map(mapRawCocktail));
+                setCocktails(cocktailData.map(mapRawCocktail));
                 setFavoriteIds(favoritesData);
             } catch {
                 setError('Impossible de charger les cocktails. Veuillez reessayer plus tard.');
@@ -328,8 +321,8 @@ export default function Catalogue() {
                                 }}
                                 className={`absolute top-4 right-4 z-10 px-3 py-2 border-2 border-brand-dark font-black text-sm transition-colors ${
                                     favoriteIds.has(cocktail.id)
-                                        ? 'bg-brand-primary text-white'
-                                        : 'bg-white text-brand-dark'
+                                        ? 'favorite-badge favorite-badge-active bg-brand-primary text-white'
+                                        : 'favorite-badge bg-white text-brand-dark'
                                 }`}
                                 aria-label={favoriteIds.has(cocktail.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                             >

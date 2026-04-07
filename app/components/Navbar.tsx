@@ -42,6 +42,9 @@ export function Navbar() {
                                 <Link href="/my-cocktails" className="font-bold text-brand-dark hover:text-brand-primary transition-colors text-lg hover-scale">
                                     Mes creations
                                 </Link>
+                                <Link href="/collections" className="font-bold text-brand-dark hover:text-brand-primary transition-colors text-lg hover-scale">
+                                    Collections
+                                </Link>
                             </>
                         )}
                     </div>
@@ -83,6 +86,14 @@ export function Navbar() {
                                         >
                                             <Heart className="w-4 h-4 text-brand-primary" />
                                             Mes favoris
+                                        </Link>
+                                        <Link
+                                            href="/collections"
+                                            onClick={() => setDropdownOpen(false)}
+                                            className="w-full text-left px-4 py-2 text-sm text-brand-dark hover:bg-brand-primary/10 flex items-center gap-2 border-b border-gray-100 font-bold"
+                                        >
+                                            <Heart className="w-4 h-4 text-brand-primary" />
+                                            Mes collections
                                         </Link>
                                         <Link
                                             href="/my-cocktails"
