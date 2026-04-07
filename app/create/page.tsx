@@ -299,7 +299,7 @@ export default function CreateCocktail() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-brand-dark">
-                                            Difficulte
+                                            Difficulté
                                         </label>
                                         <div className="flex gap-2">
                                             {(['Facile', 'Moyen', 'Difficile'] as const).map((level) => (
