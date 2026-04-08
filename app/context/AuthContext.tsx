@@ -16,8 +16,9 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
-    register: (username: string, email: string, password: string) => Promise<void>;
+    register: (username: string, email: string, password: string, isBarOwner?: boolean) => Promise<void>;
     logout: () => Promise<void>;
+    refreshUser: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,10 +37,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (!cancelled) {
                     setUser(currentUser);
                 }
+                return currentUser;
             } catch {
                 if (!cancelled) {
                     setUser(null);
                 }
+                return null;
             } finally {
                 if (!cancelled) {
                     setLoading(false);
@@ -54,6 +57,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
+    const refreshUser = async () => {
+        try {
+            const currentUser = await apiFetch<User>('/users/self');
+            setUser(currentUser);
+            return currentUser;
+        } catch {
+            setUser(null);
+            return null;
+        }
+    };
+
     const login = async (email: string, password: string) => {
         await apiFetch('/auth/login', {
             method: 'POST',
@@ -66,10 +80,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.refresh();
     };
 
-    const register = async (username: string, email: string, password: string) => {
+    const register = async (username: string, email: string, password: string, isBarOwner = false) => {
         await apiFetch('/auth/register', {
             method: 'POST',
-            body: JSON.stringify({ username, email, password }),
+            body: JSON.stringify({ username, email, password, isBarOwner }),
         });
 
         const currentUser = await apiFetch<User>('/users/self');
@@ -89,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

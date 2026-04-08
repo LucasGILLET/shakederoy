@@ -12,6 +12,7 @@ export default function Register() {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [isBarOwner, setIsBarOwner] = useState(false);
     const [terms, setTerms] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -31,7 +32,7 @@ export default function Register() {
 
         setLoading(true);
         try {
-            await register(username, email, password);
+            await register(username, email, password, isBarOwner);
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Une erreur est survenue lors de l'inscription.");
         } finally {
@@ -102,6 +103,19 @@ export default function Register() {
                             value={password}
                             onChange={(event) => setPassword(event.target.value)}
                         />
+
+                        <label className="flex items-start gap-3 p-4 bg-blue-50 border-4 border-blue-200 transform skewX(-2deg)">
+                            <input
+                                type="checkbox"
+                                className="mt-1 w-5 h-5 border-2 border-gray-300 accent-brand-primary"
+                                checked={isBarOwner}
+                                onChange={(event) => setIsBarOwner(event.target.checked)}
+                            />
+                            <span className="transform skewX(2deg)">
+                                <span className="block text-sm font-black uppercase text-blue-700">Compte pro</span>
+                                <span className="block text-sm text-gray-700">Active un compte bar pour gerer ton etablissement, son adresse, sa carte PDF et ses cocktails signature.</span>
+                            </span>
+                        </label>
 
                         <div className="flex items-start gap-3 p-4 bg-yellow-50 border-4 border-yellow-200 transform skewX(-2deg)">
                             <input

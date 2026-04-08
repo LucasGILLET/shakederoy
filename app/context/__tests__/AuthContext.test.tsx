@@ -16,7 +16,7 @@ function TestComponent() {
       <div data-testid="loading">{loading ? 'Loading' : 'Not Loading'}</div>
       <div data-testid="user">{user ? user.username : 'No User'}</div>
       <button onClick={() => login('test@example.com', 'password')}>Login</button>
-      <button onClick={() => register('testuser', 'test@example.com', 'password')}>Register</button>
+      <button onClick={() => register('testuser', 'test@example.com', 'password', true)}>Register</button>
       <button onClick={logout}>Logout</button>
     </div>
   )
@@ -58,6 +58,7 @@ describe('AuthContext', () => {
         username: 'testuser',
         email: 'test@example.com',
         role: 'user',
+        is_bar_owner: false,
       }
       mockApiFetch.mockResolvedValueOnce(storedUser)
 
@@ -80,6 +81,7 @@ describe('AuthContext', () => {
         username: 'testuser',
         email: 'test@example.com',
         role: 'user',
+        is_bar_owner: false,
       }
       mockApiFetch
         .mockRejectedValueOnce(new Error('Unauthorized'))
@@ -125,6 +127,7 @@ describe('AuthContext', () => {
         username: 'newuser',
         email: 'test@example.com',
         role: 'user',
+        is_bar_owner: true,
       }
       mockApiFetch
         .mockRejectedValueOnce(new Error('Unauthorized'))
@@ -151,6 +154,7 @@ describe('AuthContext', () => {
             username: 'testuser',
             email: 'test@example.com',
             password: 'password',
+            isBarOwner: true,
           }),
         })
       })
@@ -171,6 +175,7 @@ describe('AuthContext', () => {
           username: 'testuser',
           email: 'test@example.com',
           role: 'user',
+          is_bar_owner: true,
         })
 
       render(
@@ -202,6 +207,7 @@ describe('AuthContext', () => {
         username: 'testuser',
         email: 'test@example.com',
         role: 'user',
+        is_bar_owner: false,
       }
       mockApiFetch
         .mockResolvedValueOnce(storedUser)
